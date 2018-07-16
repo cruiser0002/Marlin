@@ -598,6 +598,19 @@ uint8_t target_extruder;
   ;
 #endif
 
+#if ENABLED(RESIN)
+
+  uint16_t resin_segments_per_second = RESIN_SEGMENTS_PER_SECOND;
+  float resin[XYZE];
+  const float z0 = Z0_RESIN;
+  const float r = R_RESIN;
+  const float size_2_angle = SIZE_2_ANGLE_RESIN;
+  const float rad_to_deg = RAD_TO_DEG_RESIN;
+
+  void calculate_resin(const float logical[XYZ]);
+
+#endif
+
 #if ENABLED(DELTA)
 
   float delta[ABC];
@@ -4151,6 +4164,11 @@ inline void gcode_G28(const bool always_home_all) {
     #endif
     tool_change(old_tool_index, 0, NO_FETCH);
   #endif
+
+#ifdef RESIN
+	set_axis_is_at_home(X_AXIS);
+	set_axis_is_at_home(Y_AXIS);
+#endif
 
   lcd_refresh();
 
@@ -13096,6 +13114,144 @@ void set_current_from_steppers_for_axis(const AxisEnum axis) {
 #endif // AUTO_BED_LEVELING_BILINEAR
 #endif // IS_CARTESIAN
 
+
+#if ENABLED(RESIN)
+
+  bool prepare_resin_move_to(const float (&rtarget)[XYZE]) {
+
+    // Get the top feedrate of the move in the XY plane
+    const float _feedrate_mm_s = MMS_SCALED(feedrate_mm_s);
+
+    const float xdiff = rtarget[X_AXIS] - current_position[X_AXIS],
+                ydiff = rtarget[Y_AXIS] - current_position[Y_AXIS];
+
+    // If the move is only in Z/E don't split up the move
+    if (!xdiff && !ydiff) {
+      planner.buffer_line_kinematic(rtarget, _feedrate_mm_s, active_extruder);
+      return false; // caller will update current_position
+    }
+    
+    // Fail if attempting move outside printable radius
+    if (!position_is_reachable(rtarget[X_AXIS], rtarget[Y_AXIS])) return true;
+
+    // Remaining cartesian distances
+    const float zdiff = rtarget[Z_AXIS] - current_position[Z_AXIS],
+                ediff = rtarget[E_AXIS] - current_position[E_AXIS];
+
+    // Get the linear distance in XYZ
+    // If the move is very short, check the E move distance
+    // No E move either? Game over.
+    float cartesian_mm = SQRT(sq(xdiff) + sq(ydiff) + sq(zdiff));
+    if (UNEAR_ZERO(cartesian_mm)) cartesian_mm = FABS(ediff);
+    if (UNEAR_ZERO(cartesian_mm)) return true;
+
+    // Minimum number of seconds to move the given distance
+    const float seconds = cartesian_mm / _feedrate_mm_s;
+
+    // The number of segments-per-second times the duration
+    // gives the number of segments
+    uint16_t segments = resin_segments_per_second * seconds;
+
+    // Minimum segment size is 0.25mm
+    //NOMORE(segments, cartesian_mm * 4);
+ 
+    // At least one segment is required
+    NOLESS(segments, 1);
+
+    // The approximate length of each segment
+    const float inv_segments = 1.0 / float(segments),
+                segment_distance[XYZE] = {
+                  xdiff * inv_segments,
+                  ydiff * inv_segments,
+                  zdiff * inv_segments,
+                  ediff * inv_segments
+                };
+
+    // SERIAL_ECHOPAIR("mm=", cartesian_mm);
+    // SERIAL_ECHOPAIR(" seconds=", seconds);
+    // SERIAL_ECHOLNPAIR(" segments=", segments);
+
+    // Get the current position as starting point
+    float raw[XYZE];
+    COPY(raw, current_position);
+
+    // Calculate and execute the segments
+    while (--segments) {
+
+      static millis_t next_idle_ms = millis() + 200UL;
+      thermalManager.manage_heater();  // This returns immediately if not really needed.
+      if (ELAPSED(millis(), next_idle_ms)) {
+        next_idle_ms = millis() + 200UL;
+        idle();
+      }
+
+      LOOP_XYZE(i) raw[i] += segment_distance[i];
+
+      calculate_resin(raw);
+
+
+      planner.buffer_segment(resin[X_AXIS], resin[Y_AXIS], resin[Z_AXIS], raw[E_AXIS], _feedrate_mm_s, active_extruder);
+    }
+
+    // Ensure last segment arrives at target location.
+    calculate_resin(rtarget);
+    planner.buffer_segment(resin[X_AXIS], resin[Y_AXIS], resin[Z_AXIS], raw[E_AXIS], _feedrate_mm_s, active_extruder);
+
+
+    return false; // caller will update current_position
+
+  }
+
+#endif
+
+/**
+ * Resin forward kinematics math
+ **/
+
+#if ENABLED(RESIN)
+  
+  const float z0_squared = z0*z0;
+  float abs_x = 0;
+
+  float fast_atan(float x) {
+    abs_x = fabs(x);
+    return 3.14159265/4*x - x*(abs_x-1)*(0.2447 + 0.0663*abs_x);
+  }
+ 
+  float fast_sqrt(float x) {
+    float xhalf = 0.5*x;
+    union {
+        float x;
+        long i;
+    } u;
+    
+    u.x = x;
+    u.i = 0x5F3759DF - (u.i>>1);
+    return x*u.x*(1.5-xhalf*sq(u.x));
+  }
+
+
+  void calculate_resin(const float logical[XYZ]){
+    /*
+    float beta_y = fast_atan((logical[Y_AXIS])/z0);
+    float beta_x = fast_atan((logical[X_AXIS])/(r+fast_sqrt(logical[Y_AXIS]*logical[Y_AXIS] + z0_squared)));
+    
+      
+    resin[X_AXIS] = beta_x*size_2_angle*rad_to_deg;
+    resin[Y_AXIS] = beta_y*size_2_angle*rad_to_deg;
+    resin[Z_AXIS] = logical[Z_AXIS];
+    */
+
+    resin[X_AXIS] = logical[X_AXIS];
+    resin[Y_AXIS] = logical[Y_AXIS];
+    resin[Z_AXIS] = logical[Z_AXIS];
+
+
+  }
+
+#endif
+
+
 #if !UBL_SEGMENTED
 #if IS_KINEMATIC
 
@@ -13387,6 +13543,8 @@ void prepare_move_to_destination() {
       ubl.prepare_segmented_line_to(destination, MMS_SCALED(feedrate_mm_s))
     #elif IS_KINEMATIC
       prepare_kinematic_move_to(destination)
+    #elif ENABLED(RESIN)
+      prepare_resin_move_to(destination)
     #else
       prepare_move_to_destination_cartesian()
     #endif

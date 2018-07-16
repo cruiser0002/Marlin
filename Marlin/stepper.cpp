@@ -62,6 +62,10 @@
   #include <SPI.h>
 #endif
 
+#if ENABLED(RESIN)
+  #include <SPI.h>
+#endif
+
 Stepper stepper; // Singleton
 
 // public:
@@ -99,6 +103,14 @@ long Stepper::counter_X = 0,
      Stepper::counter_Y = 0,
      Stepper::counter_Z = 0,
      Stepper::counter_E = 0;
+
+#if ENABLED(RESIN)
+  uint8_t Stepper::resin_spi_part1 = 0;
+  uint8_t Stepper::resin_spi_part2 = 0;
+  uint16_t Stepper::y_dac_position = 0;
+  uint16_t Stepper::x_dac_position = 0;
+#endif
+
 
 volatile uint32_t Stepper::step_events_completed = 0; // The number of step events executed in the current block
 
@@ -475,6 +487,110 @@ void Stepper::isr() {
           return;
         }
       #endif
+
+
+	#if 0
+			if (current_block->laser_on)
+				WRITE(LASER_FIRING_PIN, HIGH);
+			else
+				WRITE(LASER_FIRING_PIN, LOW);
+	#endif
+
+#define _COUNTER(AXIS) counter_## AXIS
+#define _APPLY_STEP(AXIS) AXIS ##_APPLY_STEP
+#define _INVERT_STEP_PIN(AXIS) INVERT_## AXIS ##_STEP_PIN
+
+	#if ENABLED(RESIN)
+
+		//if (_COUNTER(X) > 0) {
+
+			_COUNTER(X) -= current_block->step_event_count;
+			count_position[_AXIS(X)] += count_direction[_AXIS(X)];
+
+			x_dac_position = count_position[_AXIS(X)]*2 + 0x8000;
+
+			resin_spi_part1 = (uint8_t)((x_dac_position >> 8) & 0xFF);
+			resin_spi_part2 = (uint8_t)(x_dac_position & 0xFF);
+
+			WRITE(GALVO_SS_PIN, LOW);
+
+			SPI.transfer(0x30);
+			SPI.transfer(resin_spi_part1);
+			SPI.transfer(resin_spi_part2);
+			WRITE(GALVO_SS_PIN, HIGH);
+		//}
+	#endif
+
+
+
+
+	#if ENABLED(RESINxx)
+		//if (_COUNTER(Y) > 0) {
+
+			_COUNTER(Y) -= current_block->step_event_count;
+			count_position[_AXIS(Y)] += count_direction[_AXIS(Y)];
+
+			y_dac_position = count_position[_AXIS(Y)]*2 + 0x8000;
+
+			resin_spi_part1 = (uint8_t)((y_dac_position >> 8) & 0xFF);
+			resin_spi_part2 = (uint8_t)(y_dac_position & 0xFF);
+
+			WRITE(GALVO_SS_PIN, LOW);
+
+			SPI.transfer(0x31);
+			SPI.transfer(resin_spi_part1);
+			SPI.transfer(resin_spi_part2);
+			WRITE(GALVO_SS_PIN, HIGH);
+		//}
+#endif
+#if 0
+
+		//if(counter_e > 0 && !READ(CASE_OPEN_PIN))
+		//count_position[X_AXIS] += count_direction[X_AXIS];
+		//count_position[Y_AXIS] += count_direction[Y_AXIS];
+
+		/*
+		if(current_block->steps[E_AXIS] > 0 && count_direction[E_AXIS] > 0)
+		WRITE(LASER_FIRING_PIN, HIGH);
+		else
+		WRITE(LASER_FIRING_PIN, LOW);
+		*/
+		/*
+		if (current_block->laser_on)
+			WRITE(LASER_FIRING_PIN, HIGH);
+		else
+			WRITE(LASER_FIRING_PIN, LOW);
+			*/
+
+		x_dac_position = count_position[X_AXIS] + 0x8000;
+		y_dac_position = count_position[Y_AXIS] + 0x8000;
+		//x_dac_position = counter_X + 0x8000;
+		//y_dac_position = counter_Y + 0x8000;
+
+		resin_spi_part1 = (uint8_t)((y_dac_position >> 8) & 0xFF);
+		resin_spi_part2 = (uint8_t)(y_dac_position & 0xFF);
+
+		WRITE(GALVO_SS_PIN, LOW);
+
+		SPI.transfer(0x31);
+		SPI.transfer(resin_spi_part1);
+		SPI.transfer(resin_spi_part2);
+		WRITE(GALVO_SS_PIN, HIGH);
+
+
+		resin_spi_part1 = (uint8_t)((x_dac_position >> 8) & 0xFF);
+		resin_spi_part2 = (uint8_t)(x_dac_position & 0xFF);
+
+		WRITE(GALVO_SS_PIN, LOW);
+
+		SPI.transfer(0x30);
+		SPI.transfer(resin_spi_part1);
+		SPI.transfer(resin_spi_part2);
+		WRITE(GALVO_SS_PIN, HIGH);
+
+
+#endif
+
     }
     else {
       _NEXT_ISR(2000); // Run at slow speed - 1 KHz
@@ -971,6 +1087,10 @@ void Stepper::init() {
     L6470_init();
   #endif
 
+  #if ENABLED(RESIN)
+    resin_init();
+  #endif
+  
   // Init Dir Pins
   #if HAS_X_DIR
     X_DIR_INIT;
@@ -1658,3 +1778,20 @@ void Stepper::report_positions() {
   }
 
 #endif // HAS_MICROSTEPS
+
+
+
+#if ENABLED(RESIN)
+  void Stepper::resin_init() {
+    pinMode(LASER_FIRING_PIN, OUTPUT);
+    pinMode(CASE_OPEN_PIN, INPUT);
+    digitalWrite(CASE_OPEN_PIN, HIGH);
+    pinMode(GALVO_SS_PIN, OUTPUT);
+    WRITE(GALVO_SS_PIN, HIGH);
+    SPI.setDataMode(SPI_MODE0);
+    SPI.setBitOrder(MSBFIRST);
+    SPI.setClockDivider(SPI_CLOCK_DIV2); // Run at 8 MHz 
+    // start the SPI library:
+    SPI.begin();
+  }
+#endif

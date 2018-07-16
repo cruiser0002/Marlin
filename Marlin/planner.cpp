@@ -1401,6 +1401,353 @@ void Planner::_buffer_steps(const int32_t (&target)[XYZE], float fr_mm_s, const 
 
 } // _buffer_steps()
 
+
+#if ENABLED(RESIN)
+void Planner::resin_buffer_line(const float &a, const float &b, const float &c, const float &e, float fr_mm_s, const uint8_t extruder) {
+  // Translates from mm coordinate to step and DAC coordinates
+  // 
+  //this should be done after the wait, because otherwise a M92 code within the gcode disrupts this calculation somehow
+  
+  //use extra information for x and y such that we generate the bare minimum number of steps for x and y
+  //stop treating e as stepper output, just need to know if the laser is on or off
+  //there's no such thing as a step in a DAC, we should simply go through the DAC coordinates in increments that reflect the desired linear speed
+  
+  //Only Z axis should be converted to steps
+  //eventually position gets updated to target
+  const long target[XYZE] = {
+    //LROUND(a * axis_steps_per_mm[X_AXIS]),  
+    //LROUND(b * axis_steps_per_mm[Y_AXIS]),
+    LROUND(c * axis_steps_per_mm[Z_AXIS]),
+    //LROUND(e * axis_steps_per_mm[E_AXIS_N])
+  };
+
+  //delta positions in steps
+  //this implies position is in step coordinate
+  const long da = target[X_AXIS] - position[X_AXIS],
+    db = target[Y_AXIS] - position[Y_AXIS],
+    dc = target[Z_AXIS] - position[Z_AXIS];
+
+  //communicates absolute position and delta steps to serial monitor
+  /*
+  SERIAL_ECHOPAIR("  Planner FR:", fr_mm_s);
+  SERIAL_CHAR(' ');
+  SERIAL_ECHOPAIR("X:", a);
+  SERIAL_ECHOPAIR(" (", da);
+  SERIAL_ECHOPAIR(") Y:", b);
+  SERIAL_ECHOPAIR(" (", db);
+  SERIAL_ECHOPAIR(") Z:", c);
+  SERIAL_ECHOPAIR(" (", dc);
+  SERIAL_CHAR(')');
+  SERIAL_EOL();
+  */
+
+  // DRYRUN ignores all temperature constraints and assures that the extruder is instantly satisfied
+  if (DEBUGGING(DRYRUN)) {
+    position[E_AXIS] = target[E_AXIS];
+  }
+
+  long de = target[E_AXIS] - position[E_AXIS];
+
+
+  // Compute direction bit-mask for this block
+  uint8_t dm = 0;
+
+  if (da < 0) SBI(dm, X_AXIS);
+  if (db < 0) SBI(dm, Y_AXIS);
+  if (dc < 0) SBI(dm, Z_AXIS);
+
+  if (de < 0) SBI(dm, E_AXIS);
+
+  //should consider removing some of the extruder calculations
+  const float esteps_float = de * volumetric_multiplier[extruder] * flow_percentage[extruder] * 0.01;
+  const int32_t esteps = abs(esteps_float) + 0.5;
+
+  // Calculate the buffer head after we push this byte
+  const uint8_t next_buffer_head = next_block_index(block_buffer_head);
+
+  // If the buffer is full: good! That means we are well ahead of the robot.
+  // Rest here until there is room in the buffer.
+  while (block_buffer_tail == next_buffer_head) idle();
+
+  // Prepare to set up new block
+  block_t* block = &block_buffer[block_buffer_head];
+
+  // Clear all flags, including the "busy" bit
+  block->flag = 0;
+
+  // Set direction bits
+  block->direction_bits = dm;
+
+  // Number of steps for each axis
+  // See http://www.corexy.com/theory.html
+
+  // default non-h-bot planning
+  // can speed up the routine by minimizing the number of steps
+  block->steps[X_AXIS] = labs(da);
+  block->steps[Y_AXIS] = labs(db);
+  block->steps[Z_AXIS] = labs(dc);
+
+
+  //unfortunately target is in step coordinate
+  //convert to dac coordinate, dac coordinate is all positive
+  block->dac_X = target[X_AXIS];
+  block->dac_Y = target[Y_AXIS];
+  //fill in the dac step size to maintain constant velocity
+  //naively assume dac to linear step size is constant for now
+  //use math later
+  block->dac_step_X = 0;
+  block->dac_step_Y = 0;
+
+
+
+  block->steps[E_AXIS] = esteps;
+  block->step_event_count = MAX4(block->steps[X_AXIS], block->steps[Y_AXIS], block->steps[Z_AXIS], esteps);
+
+  // Bail if this is a zero-length block
+  if (block->step_event_count < MIN_STEPS_PER_SEGMENT) return;
+
+
+
+  block->active_extruder = extruder;
+
+  //enable active axes
+  if (block->steps[X_AXIS]) enable_X();
+  if (block->steps[Y_AXIS]) enable_Y();
+  #if DISABLED(Z_LATE_ENABLE)
+    if (block->steps[Z_AXIS]) enable_Z();
+  #endif
+
+
+  enable_E0();
+  g_uc_extruder_last_move[0] = (BLOCK_BUFFER_SIZE)* 2;
+
+  if (esteps)
+    NOLESS(fr_mm_s, min_feedrate_mm_s);
+  else
+    NOLESS(fr_mm_s, min_travel_feedrate_mm_s);
+
+  /**
+  * This part of the code calculates the total length of the movement.
+  * For cartesian bots, the X_AXIS is the real X movement and same for Y_AXIS.
+  * But for corexy bots, that is not true. The "X_AXIS" and "Y_AXIS" motors (that should be named to A_AXIS
+  * and B_AXIS) cannot be used for X and Y length, because A=X+Y and B=X-Y.
+  * So we need to create other 2 "AXIS", named X_HEAD and Y_HEAD, meaning the real displacement of the Head.
+  * Having the real displacement of the head, we can calculate the total movement length and apply the desired speed.
+  */
+
+  float delta_mm[XYZE];
+  delta_mm[X_AXIS] = da * steps_to_mm[X_AXIS];
+  delta_mm[Y_AXIS] = db * steps_to_mm[Y_AXIS];
+  delta_mm[Z_AXIS] = dc * steps_to_mm[Z_AXIS];
+
+  delta_mm[E_AXIS] = esteps_float * steps_to_mm[E_AXIS_N];
+
+  if (block->steps[X_AXIS] < MIN_STEPS_PER_SEGMENT && block->steps[Y_AXIS] < MIN_STEPS_PER_SEGMENT && block->steps[Z_AXIS] < MIN_STEPS_PER_SEGMENT) {
+    block->millimeters = FABS(delta_mm[E_AXIS]);
+  }
+  else {
+    block->millimeters = SQRT(
+
+    sq(delta_mm[X_AXIS]) + sq(delta_mm[Y_AXIS]) + sq(delta_mm[Z_AXIS]));
+  }
+  float inverse_millimeters = 1.0 / block->millimeters;  // Inverse millimeters to remove multiple divides
+
+  // Calculate moves/second for this move. No divide by zero due to previous checks.
+  float inverse_mm_s = fr_mm_s * inverse_millimeters;
+
+  const uint8_t moves_queued = movesplanned();
+
+
+  block->nominal_speed = block->millimeters * inverse_mm_s; // (mm/sec) Always > 0
+  block->nominal_rate = CEIL(block->step_event_count * inverse_mm_s); // (step/sec) Always > 0
+
+
+  // Calculate and limit speed in mm/sec for each axis
+  float current_speed[NUM_AXIS], speed_factor = 1.0; // factor <1 decreases speed
+  LOOP_XYZE(i) {
+    const float cs = FABS(current_speed[i] = delta_mm[i] * inverse_mm_s);
+
+    if (cs > max_feedrate_mm_s[i]) NOMORE(speed_factor, max_feedrate_mm_s[i] / cs);
+  }
+
+
+  // Correct the speed
+  if (speed_factor < 1.0) {
+    LOOP_XYZE(i) current_speed[i] *= speed_factor;
+    block->nominal_speed *= speed_factor;
+    block->nominal_rate *= speed_factor;
+  }
+
+  // Compute and limit the acceleration rate for the trapezoid generator.
+  const float steps_per_mm = block->step_event_count * inverse_millimeters;
+  uint32_t accel;
+  if (!block->steps[X_AXIS] && !block->steps[Y_AXIS] && !block->steps[Z_AXIS]) {
+    // convert to: acceleration steps/sec^2
+    accel = CEIL(retract_acceleration * steps_per_mm);
+  }
+  else {
+#define LIMIT_ACCEL_LONG(AXIS,INDX) do{ \
+      if (block->steps[AXIS] && max_acceleration_steps_per_s2[AXIS+INDX] < accel) { \
+        const uint32_t comp = max_acceleration_steps_per_s2[AXIS+INDX] * block->step_event_count; \
+        if (accel * block->steps[AXIS] > comp) accel = comp / block->steps[AXIS]; \
+      } \
+    }while(0)
+
+#define LIMIT_ACCEL_FLOAT(AXIS,INDX) do{ \
+      if (block->steps[AXIS] && max_acceleration_steps_per_s2[AXIS+INDX] < accel) { \
+        const float comp = (float)max_acceleration_steps_per_s2[AXIS+INDX] * (float)block->step_event_count; \
+        if ((float)accel * (float)block->steps[AXIS] > comp) accel = comp / (float)block->steps[AXIS]; \
+      } \
+    }while(0)
+
+    // Start with print or travel acceleration
+    accel = CEIL((esteps ? acceleration : travel_acceleration) * steps_per_mm);
+
+#if ENABLED(DISTINCT_E_FACTORS)
+#define ACCEL_IDX extruder
+#else
+#define ACCEL_IDX 0
+#endif
+
+    // should figure out how to bypass acceleration in x, y, e moves
+    // Limit acceleration per axis
+    if (block->step_event_count <= cutoff_long) {
+      //LIMIT_ACCEL_LONG(X_AXIS, 0);
+      //LIMIT_ACCEL_LONG(Y_AXIS, 0);
+      LIMIT_ACCEL_LONG(Z_AXIS, 0);
+      //LIMIT_ACCEL_LONG(E_AXIS, ACCEL_IDX);
+    }
+    else {
+      //LIMIT_ACCEL_FLOAT(X_AXIS, 0);
+      //LIMIT_ACCEL_FLOAT(Y_AXIS, 0);
+      LIMIT_ACCEL_FLOAT(Z_AXIS, 0);
+      //LIMIT_ACCEL_FLOAT(E_AXIS, ACCEL_IDX);
+    }
+  }
+  block->acceleration_steps_per_s2 = accel;
+  block->acceleration = accel / steps_per_mm;
+  block->acceleration_rate = (long)(accel * 16777216.0 / ((F_CPU)* 0.125)); // * 8.388608
+
+                                        // Initial limit on the segment entry velocity
+  float vmax_junction;
+
+
+  /**
+  * Adapted from Průša MKS firmware
+  * https://github.com/prusa3d/Prusa-Firmware
+  *
+  * Start with a safe speed (from which the machine may halt to stop immediately).
+  */
+
+  // Exit speed limited by a jerk to full halt of a previous last segment
+  static float previous_safe_speed;
+
+  float safe_speed = block->nominal_speed;
+  uint8_t limited = 0;
+  LOOP_XYZE(i) {
+    const float jerk = FABS(current_speed[i]), maxj = max_jerk[i];
+    if (jerk > maxj) {
+      if (limited) {
+        const float mjerk = maxj * block->nominal_speed;
+        if (jerk * safe_speed > mjerk) safe_speed = mjerk / jerk;
+      }
+      else {
+        ++limited;
+        safe_speed = maxj;
+      }
+    }
+  }
+
+  if (moves_queued > 1 && previous_nominal_speed > 0.0001) {
+    // Estimate a maximum velocity allowed at a joint of two successive segments.
+    // If this maximum velocity allowed is lower than the minimum of the entry / exit safe velocities,
+    // then the machine is not coasting anymore and the safe entry / exit velocities shall be used.
+
+    // The junction velocity will be shared between successive segments. Limit the junction velocity to their minimum.
+    bool prev_speed_larger = previous_nominal_speed > block->nominal_speed;
+    float smaller_speed_factor = prev_speed_larger ? (block->nominal_speed / previous_nominal_speed) : (previous_nominal_speed / block->nominal_speed);
+    // Pick the smaller of the nominal speeds. Higher speed shall not be achieved at the junction during coasting.
+    vmax_junction = prev_speed_larger ? block->nominal_speed : previous_nominal_speed;
+    // Factor to multiply the previous / current nominal velocities to get componentwise limited velocities.
+    float v_factor = 1.f;
+    limited = 0;
+    // Now limit the jerk in all axes.
+    LOOP_XYZE(axis) {
+      // Limit an axis. We have to differentiate: coasting, reversal of an axis, full stop.
+      float v_exit = previous_speed[axis], v_entry = current_speed[axis];
+      if (prev_speed_larger) v_exit *= smaller_speed_factor;
+      if (limited) {
+        v_exit *= v_factor;
+        v_entry *= v_factor;
+      }
+
+      // Calculate jerk depending on whether the axis is coasting in the same direction or reversing.
+      const float jerk = (v_exit > v_entry)
+        ? //                                  coasting             axis reversal
+        ((v_entry > 0.f || v_exit < 0.f) ? (v_exit - v_entry) : max(v_exit, -v_entry))
+        : // v_exit <= v_entry                coasting             axis reversal
+        ((v_entry < 0.f || v_exit > 0.f) ? (v_entry - v_exit) : max(-v_exit, v_entry));
+
+      if (jerk > max_jerk[axis]) {
+        v_factor *= max_jerk[axis] / jerk;
+        ++limited;
+      }
+    }
+    if (limited) vmax_junction *= v_factor;
+    // Now the transition velocity is known, which maximizes the shared exit / entry velocity while
+    // respecting the jerk factors, it may be possible, that applying separate safe exit / entry velocities will achieve faster prints.
+    const float vmax_junction_threshold = vmax_junction * 0.99f;
+    if (previous_safe_speed > vmax_junction_threshold && safe_speed > vmax_junction_threshold) {
+      // Not coasting. The machine will stop and start the movements anyway,
+      // better to start the segment from start.
+      SBI(block->flag, BLOCK_BIT_START_FROM_FULL_HALT);
+      vmax_junction = safe_speed;
+    }
+  }
+  else {
+    SBI(block->flag, BLOCK_BIT_START_FROM_FULL_HALT);
+    vmax_junction = safe_speed;
+  }
+
+  // Max entry speed of this block equals the max exit speed of the previous block.
+  block->max_entry_speed = vmax_junction;
+
+  // Initialize block entry speed. Compute based on deceleration to user-defined MINIMUM_PLANNER_SPEED.
+  const float v_allowable = max_allowable_speed(-block->acceleration, MINIMUM_PLANNER_SPEED, block->millimeters);
+  block->entry_speed = min(vmax_junction, v_allowable);
+
+  // Initialize planner efficiency flags
+  // Set flag if block will always reach maximum junction speed regardless of entry/exit speeds.
+  // If a block can de/ac-celerate from nominal speed to zero within the length of the block, then
+  // the current block and next block junction speeds are guaranteed to always be at their maximum
+  // junction speeds in deceleration and acceleration, respectively. This is due to how the current
+  // block nominal speed limits both the current and next maximum junction speeds. Hence, in both
+  // the reverse and forward planners, the corresponding block junction speed will always be at the
+  // the maximum junction speed and may always be ignored for any speed reduction checks.
+  block->flag |= BLOCK_FLAG_RECALCULATE | (block->nominal_speed <= v_allowable ? BLOCK_FLAG_NOMINAL_LENGTH : 0);
+
+  // Update previous path unit_vector and nominal speed
+  COPY(previous_speed, current_speed);
+  previous_nominal_speed = block->nominal_speed;
+  previous_safe_speed = safe_speed;
+
+
+  calculate_trapezoid_for_block(block, block->entry_speed / block->nominal_speed, safe_speed / block->nominal_speed);
+
+  // Move buffer head
+  block_buffer_head = next_buffer_head;
+
+  // Update the position (only when a move was queued)
+  COPY(position, target);
+
+  recalculate();
+
+  stepper.wake_up();
+
+}
+#endif
+
+
 /**
  * Planner::buffer_segment
  *

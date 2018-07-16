@@ -172,7 +172,8 @@
   #include "pins_GT2560_REV_A_PLUS.h" // ATmega1280, ATmega2560
 #elif MB(SILVER_GATE)
   #include "pins_SILVER_GATE.h"       // ATmega2561
-
+#elif MB(RESIN)
+  #include "pins_RESIN.h"             // ATMega2560
 //
 // ATmega1281, ATmega2561
 //

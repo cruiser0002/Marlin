@@ -97,6 +97,7 @@
 #define BOARD_SCOOVO_X9H        321   // abee Scoovo X9H
 #define BOARD_GT2560_REV_A      74    // Geeetech GT2560 Rev. A
 #define BOARD_GT2560_REV_A_PLUS 75    // Geeetech GT2560 Rev. A+ (with auto level probe)
+#define BOARD_RESIN				73    // Resin shield + Arduino Mega
 
 //
 // ATmega1281, ATmega2561
@@ -146,6 +147,7 @@
 #define BOARD_SAV_MKI           83    // SAV Mk-I (AT90USB1286)
 #define BOARD_TEENSY2           84    // Teensy++2.0 (AT90USB1286) - CLI compile: HARDWARE_MOTHERBOARD=84  make
 #define BOARD_5DPRINT           88    // 5DPrint D8 Driver Board
+
 
 #define MB(board) (MOTHERBOARD==BOARD_##board)
 

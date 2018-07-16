@@ -49,6 +49,10 @@
 #include "language.h"
 #include "types.h"
 
+#if ENABLED(RESIN)
+  #include <SPI.h>
+#endif
+
 class Stepper;
 extern Stepper stepper;
 
@@ -105,6 +109,13 @@ class Stepper {
 
   private:
 
+    #if ENABLED(RESIN)
+       static uint8_t resin_spi_part1;
+       static uint8_t resin_spi_part2;
+       static uint16_t x_dac_position;
+       static uint16_t y_dac_position;
+    #endif
+       
     static uint8_t last_direction_bits;        // The next stepping-bits to be output
 
     #if ENABLED(X_DUAL_ENDSTOPS)
@@ -387,6 +398,10 @@ class Stepper {
 
     #if HAS_MICROSTEPS
       static void microstep_init();
+    #endif
+
+    #if ENABLED(RESIN)
+      static void resin_init();
     #endif
 
 };

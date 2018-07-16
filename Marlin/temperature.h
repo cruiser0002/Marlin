@@ -349,9 +349,19 @@ class Temperature {
       #if HOTENDS == 1
         UNUSED(e);
       #endif
-      return current_temperature[HOTEND_INDEX];
+#if ENABLED(RESIN)
+		return target_temperature[HOTEND_INDEX];
+#else 
+		return current_temperature[HOTEND_INDEX];
+#endif
     }
-    static float degBed() { return current_temperature_bed; }
+    static float degBed() {
+#if ENABLED(RESIN)
+		return target_temperature_bed;
+#else 
+		return current_temperature_bed;
+#endif
+	}
 
     #if ENABLED(SHOW_TEMP_ADC_VALUES)
       static int16_t rawHotendTemp(uint8_t e) {

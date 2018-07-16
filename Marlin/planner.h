@@ -96,6 +96,14 @@ typedef struct {
 
   uint8_t direction_bits;                   // The direction bit set for this block (refers to *_DIRECTION_BIT in config.h)
 
+
+  #if ENABLED(RESIN)
+  uint16_t dac_X, dac_Y,          //absolute dac position, dac coordinate is all positive
+    dac_step_X, dac_step_Y;       //increment the dac by this ammount per "step"
+  bool laser_on;              //bypass the use of extrusion motor for turning on the laser
+  #endif
+
+
   // Advance extrusion
   #if ENABLED(LIN_ADVANCE)
     bool use_advance_lead;
@@ -430,6 +438,10 @@ class Planner {
 
     static void _set_position_mm(const float &a, const float &b, const float &c, const float &e);
 
+    #if ENABLED(RESIN)
+      static void resin_buffer_line(const float &a, const float &b, const float &c, const float &e, float fr_mm_s, const uint8_t extruder);
+    #endif
+    
     /**
      * Add a new linear movement to the buffer.
      * The target is NOT translated to delta/scara
