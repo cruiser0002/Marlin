@@ -404,6 +404,9 @@ class Temperature {
       #if WATCH_HOTENDS
         start_watching_heater(HOTEND_INDEX);
       #endif
+      #if ENABLED(RESIN)
+        current_temperature[HOTEND_INDEX] = target_temperature[HOTEND_INDEX];
+      #endif
     }
 
     static void setTargetBed(const int16_t celsius) {
@@ -417,6 +420,9 @@ class Temperature {
         ;
         #if WATCH_THE_BED
           start_watching_bed();
+        #endif
+        #if ENABLED(RESIN)
+          current_temperature_bed = target_temperature_bed;
         #endif
       #endif
     }

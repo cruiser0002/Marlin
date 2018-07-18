@@ -489,16 +489,20 @@ void Stepper::isr() {
       #endif
 
 
-	#if 0
-			if (current_block->laser_on)
-				WRITE(LASER_FIRING_PIN, HIGH);
-			else
-				WRITE(LASER_FIRING_PIN, LOW);
-	#endif
+
 
 #define _COUNTER(AXIS) counter_## AXIS
 #define _APPLY_STEP(AXIS) AXIS ##_APPLY_STEP
 #define _INVERT_STEP_PIN(AXIS) INVERT_## AXIS ##_STEP_PIN
+
+
+  #if ENABLED(RESIN)
+      if (current_block->laser_on)
+        WRITE(LASER_FIRING_PIN, LOW);
+      else
+        WRITE(LASER_FIRING_PIN, HIGH);
+  #endif
+
 
 	#if ENABLED(RESIN)
 
@@ -524,7 +528,7 @@ void Stepper::isr() {
 
 
 
-	#if ENABLED(RESINxx)
+	#if ENABLED(RESIN)
 		//if (_COUNTER(Y) > 0) {
 
 			_COUNTER(Y) -= current_block->step_event_count;
@@ -1784,6 +1788,7 @@ void Stepper::report_positions() {
 #if ENABLED(RESIN)
   void Stepper::resin_init() {
     pinMode(LASER_FIRING_PIN, OUTPUT);
+    digitalWrite(LASER_FIRING_PIN, HIGH);
     pinMode(CASE_OPEN_PIN, INPUT);
     digitalWrite(CASE_OPEN_PIN, HIGH);
     pinMode(GALVO_SS_PIN, OUTPUT);

@@ -13232,7 +13232,7 @@ void set_current_from_steppers_for_axis(const AxisEnum axis) {
 
 
   void calculate_resin(const float logical[XYZ]){
-    /*
+    
     float beta_y = fast_atan((logical[Y_AXIS])/z0);
     float beta_x = fast_atan((logical[X_AXIS])/(r+fast_sqrt(logical[Y_AXIS]*logical[Y_AXIS] + z0_squared)));
     
@@ -13240,12 +13240,13 @@ void set_current_from_steppers_for_axis(const AxisEnum axis) {
     resin[X_AXIS] = beta_x*size_2_angle*rad_to_deg;
     resin[Y_AXIS] = beta_y*size_2_angle*rad_to_deg;
     resin[Z_AXIS] = logical[Z_AXIS];
-    */
+    
 
+    /*
     resin[X_AXIS] = logical[X_AXIS];
     resin[Y_AXIS] = logical[Y_AXIS];
     resin[Z_AXIS] = logical[Z_AXIS];
-
+    */
 
   }
 

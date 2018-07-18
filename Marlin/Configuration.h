@@ -119,9 +119,10 @@
 // The following define selects which electronics board you have.
 // Please choose the name from boards.h that matches your setup
 #ifndef MOTHERBOARD
-  #define MOTHERBOARD BOARD_RAMPS_14_EFB//BOARD_RESIN
+  #define MOTHERBOARD BOARD_RESIN
 #endif
 
+#define RESIN_SEGMENTS_PER_SECOND 1000
 #define Z0_RESIN              150 //Previous value 140
 #define R_RESIN               7.76    //New galvo = 7.76 
 
@@ -536,14 +537,14 @@
  * Override with M92
  *                                      X, Y, Z, E0 [, E1[, E2[, E3[, E4]]]]
  */
-#define DEFAULT_AXIS_STEPS_PER_UNIT   {655, 655, 804.135, 500} //{ 600, 600, 4000, 500 }
+#define DEFAULT_AXIS_STEPS_PER_UNIT   {65, 65, 804, 4000} //{ 600, 600, 4000, 500 }
 
 /**
  * Default Max Feed Rate (mm/s)
  * Override with M203
  *                                      X, Y, Z, E0 [, E1[, E2[, E3[, E4]]]]
  */
-#define DEFAULT_MAX_FEEDRATE          { 3000, 3000, 5, 25 }
+#define DEFAULT_MAX_FEEDRATE          { 3000, 3000, 2, 25 }
 
 /**
  * Default Max Acceleration (change/s) change = mm/s
@@ -551,7 +552,7 @@
  * Override with M201
  *                                      X, Y, Z, E0 [, E1[, E2[, E3[, E4]]]]
  */
-#define DEFAULT_MAX_ACCELERATION      { 3000, 3000, 100, 10000 }
+#define DEFAULT_MAX_ACCELERATION      { 3000, 3000, 50, 1000 }
 
 /**
  * Default Acceleration (change/s) change = mm/s
@@ -756,8 +757,8 @@
 
 // Invert the stepper direction. Change (or reverse the motor connector) if an axis goes the wrong way.
 #define INVERT_X_DIR false
-#define INVERT_Y_DIR true
-#define INVERT_Z_DIR true
+#define INVERT_Y_DIR false
+#define INVERT_Z_DIR false
 
 // Enable this option for Toshiba stepper drivers
 //#define CONFIG_STEPPERS_TOSHIBA

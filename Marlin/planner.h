@@ -438,9 +438,6 @@ class Planner {
 
     static void _set_position_mm(const float &a, const float &b, const float &c, const float &e);
 
-    #if ENABLED(RESIN)
-      static void resin_buffer_line(const float &a, const float &b, const float &c, const float &e, float fr_mm_s, const uint8_t extruder);
-    #endif
     
     /**
      * Add a new linear movement to the buffer.

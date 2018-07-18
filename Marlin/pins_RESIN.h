@@ -17,7 +17,7 @@
 	#define RESIN
 #endif
 
-#define RESIN_SEGMENTS_PER_SECOND 1000
+
   //#define RESIN_SEGMENTS_PER_SECOND 10
 
 
@@ -44,9 +44,7 @@
 #define Z_ENABLE_PIN       32 //48 //new shield 8
 #define Z_MIN_PIN          25 //33 //new shield A4 (58)
 #define Z_MAX_PIN          -1
-#define Z_MS1              30 
-#define Z_MS2              28 
-#define Z_MS3              26
+
 
 
 #define E0_STEP_PIN        8
@@ -101,6 +99,6 @@
 
 #define HEATER_BED_PIN   13    
 
-#define TEMP_BED_PIN      66 // A12 = 66???
+#define TEMP_BED_PIN      15 // A12 = 66???
 
 
