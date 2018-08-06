@@ -106,7 +106,7 @@
 #define BOARD_GT2560_REV_A      74    // Geeetech GT2560 Rev. A
 #define BOARD_GT2560_REV_A_PLUS 75    // Geeetech GT2560 Rev. A+ (with auto level probe)
 #define BOARD_EINSTART_S        666   // Einstart retrofit
-
+#define BOARD_RESIN 			998   // Resin Shield
 //
 // ATmega1281, ATmega2561
 //

@@ -248,7 +248,8 @@
   #include "pins_ANET_10.h"           // ATmega1284P                                env:sanguino_atmega1284p
 #elif MB(SETHI)
   #include "pins_SETHI.h"             // ATmega644P, ATmega644, ATmega1284P         env:sanguino_atmega644p env:sanguino_atmega1284p
-
+#elif MB(RESIN)
+  #include "pins_RESIN.h"
 //
 // Teensyduino - AT90USB1286, AT90USB1286P
 //
