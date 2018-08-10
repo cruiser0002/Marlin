@@ -21,21 +21,17 @@
   //#define RESIN_SEGMENTS_PER_SECOND 10
 
 
-#define SERVO0_PIN         -1 
 
-#define SERVO1_PIN         -1
-#define SERVO2_PIN         -1
-#define SERVO3_PIN         -1
 
 #define X_STEP_PIN         4
-#define X_DIR_PIN          5
-#define X_ENABLE_PIN       -1
+#define X_DIR_PIN          4
+#define X_ENABLE_PIN       4
 #define X_MIN_PIN          -1
 #define X_MAX_PIN          -1
 
-#define Y_STEP_PIN         6
-#define Y_DIR_PIN          7
-#define Y_ENABLE_PIN       -1
+#define Y_STEP_PIN         4
+#define Y_DIR_PIN          4
+#define Y_ENABLE_PIN       4
 #define Y_MIN_PIN          -1
 #define Y_MAX_PIN          -1
 
@@ -47,17 +43,10 @@
 
 
 
-#define E0_STEP_PIN        8
-#define E0_DIR_PIN         9
-#define E0_ENABLE_PIN      10
+#define E0_STEP_PIN        4
+#define E0_DIR_PIN         4
+#define E0_ENABLE_PIN      4
 
-#define E1_STEP_PIN        -1
-#define E1_DIR_PIN         -1
-#define E1_ENABLE_PIN      -1
-
-#define SDPOWER            -1
-#define SDSS               -1
-#define LED_PIN            -1
 
 #define LASER_FIRING_PIN   2 //32 //new shield 14
 #define GALVO_SS_PIN       48 //A7 = 61 //new shield 53
@@ -65,40 +54,22 @@
 #define CASE_OPEN2_PIN     29
 #define FAULT              -1 //not used any more
 
-#define SCK_PIN          52 //52
-#define MISO_PIN         50 //50
-#define MOSI_PIN         51 //53
 
 
 
-
-
-
-//#define CONTROLLER_FAN_PIN  -1 // Pin used for the fan to cool controller
-
-#define FAN_PIN           -1 // IO pin. Buffer needed
-
-
-#define PS_ON_PIN          -1
-
-
-#define KILL_PIN         -1
 
 
 #define HEATER_0_PIN     11   // EXTRUDER 1
 
 
-#define HEATER_1_PIN       -1   // EXTRUDER 2 
 
-#define HEATER_2_PIN       -1
-
-#define TEMP_0_PIN         12   // A12
+#define TEMP_0_PIN         11   // A12
 #define TEMP_1_PIN         -1   // ANALOG NUMBERING
 #define TEMP_2_PIN         -1   // ANALOG NUMBERING
 
 
-#define HEATER_BED_PIN   13    
+#define HEATER_BED_PIN   8   
 
-#define TEMP_BED_PIN      15 // A12 = 66???
+#define TEMP_BED_PIN      14 // A12 = 66???
 
 
