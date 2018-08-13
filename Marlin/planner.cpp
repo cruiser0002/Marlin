@@ -83,6 +83,10 @@ Planner planner;
 block_t Planner::block_buffer[BLOCK_BUFFER_SIZE];
 volatile uint8_t Planner::block_buffer_head = 0,           // Index of the next block to be pushed
                  Planner::block_buffer_tail = 0;
+#if ENABLED(RESIN)
+  bool Planner::laser_status = false;              //bypass the use of extrusion motor for turning on the laser
+  uint16_t Planner::dac_X = 0, Planner::dac_Y = 0;
+#endif
 
 float Planner::max_feedrate_mm_s[XYZE_N], // Max speeds in mm per second
       Planner::axis_steps_per_mm[XYZE_N],
@@ -806,14 +810,7 @@ void Planner::_buffer_steps(const int32_t (&target)[XYZE], float fr_mm_s, const 
   // Set direction bits
   block->direction_bits = dm;
   
-  #if ENABLED(RESIN)
-    if (de>0) {
-      block->laser_on = true;
-    }
-    else {
-      block->laser_on = false;
-    }
-  #endif
+
 
   // Number of steps for each axis
   // See http://www.corexy.com/theory.html
@@ -839,9 +836,13 @@ void Planner::_buffer_steps(const int32_t (&target)[XYZE], float fr_mm_s, const 
   block->steps[E_AXIS] = esteps;
 
   block->step_event_count = MAX4(block->steps[X_AXIS], block->steps[Y_AXIS], block->steps[Z_AXIS], esteps);
+  
   #if ENABLED(RESIN)
     block->steps[E_AXIS] = 0;
     block->step_event_count = MAX4(block->steps[X_AXIS], block->steps[Y_AXIS], block->steps[Z_AXIS], 0);
+    block->laser_on = laser_status;
+    block->dac_X = dac_X;
+    block->dac_Y = dac_Y;
   #endif
 
   // Bail if this is a zero-length block

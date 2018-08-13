@@ -401,7 +401,7 @@ class Stepper {
     #endif
 
     #if ENABLED(RESIN)
-      static void resin_init();
+      //static void resin_init();
     #endif
 
 };

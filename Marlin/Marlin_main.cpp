@@ -298,6 +298,10 @@
   #include <SPI.h>
 #endif
 
+#if ENABLED(RESIN)
+  #include <SPI.h>
+#endif
+
 #if ENABLED(DAC_STEPPER_CURRENT)
   #include "stepper_dac.h"
 #endif
@@ -3318,6 +3322,12 @@ void gcode_get_destination() {
           SERIAL_ECHO_START();
           SERIAL_ECHOLNPGM(MSG_BUSY_PAUSED_FOR_INPUT);
           break;
+        #if ENABLED(RESIN)
+          case DOOR_OPEN:
+            SERIAL_ECHO_START();
+            SERIAL_ECHOLNPGM(MSG_BUSY_PAUSED_FOR_DOOR);
+            break;
+        #endif
         default:
           break;
       }
@@ -11609,6 +11619,20 @@ inline void gcode_T(const uint8_t tmp_extruder) {
 void process_parsed_command() {
   KEEPALIVE_STATE(IN_HANDLER);
 
+  #if ENABLED(RESIN)
+
+    int temp_laser_state = digitalRead(LASER_ENABLE_PIN);
+
+    while (READ(CASE_OPEN_PIN) || READ(CASE_OPEN2_PIN)) {
+      KEEPALIVE_STATE(DOOR_OPEN);
+      digitalWrite(LASER_ENABLE_PIN, LOW);
+      idle();
+    }
+    digitalWrite(LASER_ENABLE_PIN, temp_laser_state);
+    KEEPALIVE_STATE(IN_HANDLER);
+    
+  #endif
+
   // Handle a known G, M, or T
   switch (parser.command_letter) {
     case 'G': switch (parser.codenum) {
@@ -13118,6 +13142,7 @@ void set_current_from_steppers_for_axis(const AxisEnum axis) {
 #if ENABLED(RESIN)
 
   bool prepare_resin_move_to(const float (&rtarget)[XYZE]) {
+    planner.laser_status = false;
 
     // Get the top feedrate of the move in the XY plane
     const float _feedrate_mm_s = MMS_SCALED(feedrate_mm_s);
@@ -13137,7 +13162,10 @@ void set_current_from_steppers_for_axis(const AxisEnum axis) {
     // Remaining cartesian distances
     const float zdiff = rtarget[Z_AXIS] - current_position[Z_AXIS],
                 ediff = rtarget[E_AXIS] - current_position[E_AXIS];
-
+    
+    if (current_position[E_AXIS] < destination[E_AXIS])
+      planner.laser_status = true;
+    
     // Get the linear distance in XYZ
     // If the move is very short, check the E move distance
     // No E move either? Game over.
@@ -13153,7 +13181,7 @@ void set_current_from_steppers_for_axis(const AxisEnum axis) {
     uint16_t segments = resin_segments_per_second * seconds;
 
     // Minimum segment size is 0.25mm
-    //NOMORE(segments, cartesian_mm * 4);
+    NOMORE(segments, cartesian_mm * 4);
  
     // At least one segment is required
     NOLESS(segments, 1);
@@ -13178,24 +13206,31 @@ void set_current_from_steppers_for_axis(const AxisEnum axis) {
     // Calculate and execute the segments
     while (--segments) {
 
+      /*
       static millis_t next_idle_ms = millis() + 200UL;
       thermalManager.manage_heater();  // This returns immediately if not really needed.
       if (ELAPSED(millis(), next_idle_ms)) {
         next_idle_ms = millis() + 200UL;
         idle();
       }
+      */
 
       LOOP_XYZE(i) raw[i] += segment_distance[i];
 
       calculate_resin(raw);
 
-
-      planner.buffer_segment(resin[X_AXIS], resin[Y_AXIS], resin[Z_AXIS], raw[E_AXIS], _feedrate_mm_s, active_extruder);
+      //planner.dac_X = uint16_t(resin[X_AXIS]) + 0x8000;
+      //planner.dac_Y = uint16_t(resin[Y_AXIS]) + 0x8000;
+      planner.buffer_segment(resin[X_AXIS], resin[Y_AXIS], resin[Z_AXIS], 0.0, _feedrate_mm_s, active_extruder);
+      //planner.buffer_segment(0, 0, resin[Z_AXIS], 0.0, _feedrate_mm_s, active_extruder);
     }
 
     // Ensure last segment arrives at target location.
     calculate_resin(rtarget);
-    planner.buffer_segment(resin[X_AXIS], resin[Y_AXIS], resin[Z_AXIS], raw[E_AXIS], _feedrate_mm_s, active_extruder);
+    //planner.dac_X = uint16_t(resin[X_AXIS]) + 0x8000;
+    //planner.dac_Y = uint16_t(resin[Y_AXIS]) + 0x8000;
+    planner.buffer_segment(resin[X_AXIS], resin[Y_AXIS], resin[Z_AXIS], 0.0, _feedrate_mm_s, active_extruder);
+    //planner.buffer_segment(0, 0, resin[Z_AXIS], 0.0, _feedrate_mm_s, active_extruder);
 
 
     return false; // caller will update current_position
@@ -13215,7 +13250,7 @@ void set_current_from_steppers_for_axis(const AxisEnum axis) {
 
   float fast_atan(float x) {
     abs_x = fabs(x);
-    return 3.14159265/4*x - x*(abs_x-1)*(0.2447 + 0.0663*abs_x);
+    return 0.7853981634*x - x*(abs_x-1)*(0.2447 + 0.0663*abs_x);
   }
  
   float fast_sqrt(float x) {
@@ -13233,12 +13268,12 @@ void set_current_from_steppers_for_axis(const AxisEnum axis) {
 
   void calculate_resin(const float logical[XYZ]){
     
-    float beta_y = fast_atan((logical[Y_AXIS])/z0);
+    float beta_y = fast_atan((logical[Y_AXIS])/z0); //radians
     float beta_x = fast_atan((logical[X_AXIS])/(r+fast_sqrt(logical[Y_AXIS]*logical[Y_AXIS] + z0_squared)));
     
       
-    resin[X_AXIS] = beta_x*size_2_angle*rad_to_deg;
-    resin[Y_AXIS] = beta_y*size_2_angle*rad_to_deg;
+    resin[X_AXIS] = beta_x*RESIN_RAD_TO_MM;
+    resin[Y_AXIS] = beta_y*RESIN_RAD_TO_MM;
     resin[Z_AXIS] = logical[Z_AXIS];
     
 
@@ -14697,6 +14732,31 @@ void setup() {
     delay(1000);
     WRITE(LCD_PINS_RS, HIGH);
   #endif
+#if ENABLED(RESIN)
+  //void Stepper::resin_init() {
+
+    pinMode(LASER_FIRING_PIN, OUTPUT);
+    digitalWrite(LASER_FIRING_PIN, HIGH);
+    
+    pinMode(LASER_ENABLE_PIN, OUTPUT);
+    digitalWrite(LASER_ENABLE_PIN, LOW);
+    
+    pinMode(CASE_OPEN_PIN, INPUT);
+    //digitalWrite(CASE_OPEN_PIN, HIGH);
+    
+    pinMode(CASE_OPEN2_PIN, INPUT);
+    //digitalWrite(CASE_OPEN2_PIN, HIGH);
+    
+    pinMode(GALVO_SS_PIN, OUTPUT);
+    WRITE(GALVO_SS_PIN, HIGH);
+    
+    SPI.setDataMode(SPI_MODE0);
+    SPI.setBitOrder(MSBFIRST);
+    SPI.setClockDivider(SPI_CLOCK_DIV2); // Run at 8 MHz 
+    // start the SPI library:
+    SPI.begin();
+  //}
+#endif
 }
 
 /**
@@ -14710,7 +14770,9 @@ void setup() {
  *  - Call LCD update
  */
 void loop() {
+
   if (commands_in_queue < BUFSIZE) get_available_commands();
+ 
 
   #if ENABLED(SDSUPPORT)
     card.checkautostart(false);
@@ -14751,7 +14813,9 @@ void loop() {
 
     #else
 
-      process_next_command();
+    
+
+    process_next_command();
 
     #endif // SDSUPPORT
 

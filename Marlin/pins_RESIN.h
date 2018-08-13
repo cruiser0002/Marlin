@@ -49,10 +49,10 @@
 
 
 #define LASER_FIRING_PIN   2 //32 //new shield 14
+#define LASER_ENABLE_PIN   3
 #define GALVO_SS_PIN       48 //A7 = 61 //new shield 53
-#define CASE_OPEN_PIN      27 //A0 = 54 //new shield A2 (56), A3 (57)
-#define CASE_OPEN2_PIN     29
-#define FAULT              -1 //not used any more
+#define CASE_OPEN_PIN      29 //A0 = 54 //new shield A2 (56), A3 (57)
+#define CASE_OPEN2_PIN     27
 
 
 

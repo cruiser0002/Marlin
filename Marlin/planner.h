@@ -98,9 +98,8 @@ typedef struct {
 
 
   #if ENABLED(RESIN)
-  uint16_t dac_X, dac_Y,          //absolute dac position, dac coordinate is all positive
-    dac_step_X, dac_step_Y;       //increment the dac by this ammount per "step"
-  bool laser_on;              //bypass the use of extrusion motor for turning on the laser
+    uint16_t dac_X, dac_Y;          //absolute dac position, dac coordinate is all positive
+    bool laser_on;              //bypass the use of extrusion motor for turning on the laser
   #endif
 
 
@@ -156,6 +155,11 @@ class Planner {
     static block_t block_buffer[BLOCK_BUFFER_SIZE];
     static volatile uint8_t block_buffer_head,      // Index of the next block to be pushed
                             block_buffer_tail;      // Index of the busy block, if any
+
+    #if ENABLED(RESIN)
+      static uint16_t dac_X, dac_Y;
+      static bool laser_status;              //bypass the use of extrusion motor for turning on the laser
+    #endif
 
     #if ENABLED(DISTINCT_E_FACTORS)
       static uint8_t last_extruder;                 // Respond to extruder change

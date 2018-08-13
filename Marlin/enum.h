@@ -152,6 +152,10 @@ enum EndstopEnum {
     IN_PROCESS,         // Known to be blocking command input (as in G29)
     PAUSED_FOR_USER,    // Blocking pending any input
     PAUSED_FOR_INPUT    // Blocking pending text input (concept)
+    #if ENABLED(RESIN)
+    , 
+    DOOR_OPEN
+    #endif
   };
 #endif
 

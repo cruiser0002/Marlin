@@ -406,6 +406,12 @@ class Temperature {
       #endif
       #if ENABLED(RESIN)
         current_temperature[HOTEND_INDEX] = target_temperature[HOTEND_INDEX];
+        if(current_temperature[HOTEND_INDEX] > 100) {
+          digitalWrite(LASER_ENABLE_PIN, HIGH);
+        }
+        else {
+          digitalWrite(LASER_ENABLE_PIN, LOW);
+        }
       #endif
     }
 

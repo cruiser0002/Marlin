@@ -144,6 +144,9 @@
 #define MSG_BUSY_PROCESSING                 "busy: processing"
 #define MSG_BUSY_PAUSED_FOR_USER            "busy: paused for user"
 #define MSG_BUSY_PAUSED_FOR_INPUT           "busy: paused for input"
+#if ENABLED(RESIN)
+  #define MSG_BUSY_PAUSED_FOR_DOOR           "busy: paused for opened door"
+#endif
 #define MSG_Z_MOVE_COMP                     "Z_move_comp"
 #define MSG_RESEND                          "Resend: "
 #define MSG_UNKNOWN_COMMAND                 "Unknown command: \""
@@ -205,6 +208,7 @@
 #define MSG_ENDSTOPS_HIT                    "endstops hit: "
 #define MSG_ERR_COLD_EXTRUDE_STOP           " cold extrusion prevented"
 #define MSG_ERR_LONG_EXTRUDE_STOP           " too long extrusion prevented"
+
 #define MSG_TOO_COLD_FOR_M600               "M600 Hotend too cold to change filament"
 #define MSG_SERIAL_ERROR_MENU_STRUCTURE     "Error in menu structure"
 
