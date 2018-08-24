@@ -13231,6 +13231,8 @@ void set_current_from_steppers_for_axis(const AxisEnum axis) {
     //planner.dac_Y = uint16_t(resin[Y_AXIS]) + 0x8000;
     planner.buffer_segment(resin[X_AXIS], resin[Y_AXIS], resin[Z_AXIS], 0.0, _feedrate_mm_s, active_extruder);
     //planner.buffer_segment(0, 0, resin[Z_AXIS], 0.0, _feedrate_mm_s, active_extruder);
+    planner.laser_status = false;
+    //planner.buffer_segment(resin[X_AXIS], resin[Y_AXIS], resin[Z_AXIS], 0.0, _feedrate_mm_s, active_extruder);
 
 
     return false; // caller will update current_position

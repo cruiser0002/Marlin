@@ -129,8 +129,8 @@
 
 #define SIZE_2_ANGLE_RESIN    100.0/35.0
 #define RAD_TO_DEG_RESIN      180/3.14159265
-#define RESIN_RAD_TO_MM       163.7
-#define RESIN_RAD_TO_DAC      1872.457
+#define RESIN_RAD_TO_MM       RAD_TO_DEG_RESIN * SIZE_2_ANGLE_RESIN
+
 
 // Optional custom name for your RepStrap or other custom machine
 // Displayed in the LCD "Ready" message
@@ -433,7 +433,7 @@
 
 // This option prevents a single extrusion longer than EXTRUDE_MAXLENGTH.
 // Note that for Bowden Extruders a too-small value here may prevent loading.
-#define PREVENT_LENGTHY_EXTRUDE
+// #define PREVENT_LENGTHY_EXTRUDE
 #define EXTRUDE_MAXLENGTH 200
 
 //===========================================================================
@@ -539,14 +539,14 @@
  * Override with M92
  *                                      X, Y, Z, E0 [, E1[, E2[, E3[, E4]]]]
  */
-#define DEFAULT_AXIS_STEPS_PER_UNIT   {100, 100, 804, 4000} //{ 600, 600, 4000, 500 }
+#define DEFAULT_AXIS_STEPS_PER_UNIT   {328, 328, 804, 4000} //{ 600, 600, 4000, 500 }
 
 /**
  * Default Max Feed Rate (mm/s)
  * Override with M203
  *                                      X, Y, Z, E0 [, E1[, E2[, E3[, E4]]]]
  */
-#define DEFAULT_MAX_FEEDRATE          { 300000, 300000, 2, 25 }
+#define DEFAULT_MAX_FEEDRATE          { 7000, 7000, 2, 25 }
 
 /**
  * Default Max Acceleration (change/s) change = mm/s
@@ -554,7 +554,7 @@
  * Override with M201
  *                                      X, Y, Z, E0 [, E1[, E2[, E3[, E4]]]]
  */
-#define DEFAULT_MAX_ACCELERATION      { 300000, 300000, 50, 1000 }
+#define DEFAULT_MAX_ACCELERATION      { 7000, 7000, 50, 1000 }
 
 /**
  * Default Acceleration (change/s) change = mm/s
@@ -576,8 +576,8 @@
  * When changing speed and direction, if the difference is less than the
  * value set here, it may happen instantaneously.
  */
-#define DEFAULT_XJERK                 50000.0
-#define DEFAULT_YJERK                 50000.0
+#define DEFAULT_XJERK                 7000.0
+#define DEFAULT_YJERK                 7000.0
 #define DEFAULT_ZJERK                  0.3
 #define DEFAULT_EJERK                  5.0
 
@@ -790,8 +790,8 @@
 // @section machine
 
 // The size of the print bed
-#define X_BED_SIZE 100
-#define Y_BED_SIZE 100
+#define X_BED_SIZE 120
+#define Y_BED_SIZE 120
 
 // Travel limits (mm) after homing, corresponding to endstop positions.
 #define X_MIN_POS -1 * X_BED_SIZE / 2
