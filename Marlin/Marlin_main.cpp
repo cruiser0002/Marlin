@@ -13171,7 +13171,7 @@ void set_current_from_steppers_for_axis(const AxisEnum axis) {
     // No E move either? Game over.
     float cartesian_mm = SQRT(sq(xdiff) + sq(ydiff) + sq(zdiff));
     if (UNEAR_ZERO(cartesian_mm)) cartesian_mm = FABS(ediff);
-    if (UNEAR_ZERO(cartesian_mm)) return true;
+    if (UNEAR_ZERO(cartesian_mm)) return false;
 
     // Minimum number of seconds to move the given distance
     const float seconds = cartesian_mm / _feedrate_mm_s;
@@ -13195,9 +13195,9 @@ void set_current_from_steppers_for_axis(const AxisEnum axis) {
                   ediff * inv_segments
                 };
 
-    // SERIAL_ECHOPAIR("mm=", cartesian_mm);
-    // SERIAL_ECHOPAIR(" seconds=", seconds);
-    // SERIAL_ECHOLNPAIR(" segments=", segments);
+    SERIAL_ECHOPAIR("mm=", cartesian_mm);
+    SERIAL_ECHOPAIR(" seconds=", seconds);
+    SERIAL_ECHOLNPAIR(" segments=", segments);
 
     // Get the current position as starting point
     float raw[XYZE];
