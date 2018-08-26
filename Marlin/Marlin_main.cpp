@@ -13195,10 +13195,10 @@ void set_current_from_steppers_for_axis(const AxisEnum axis) {
                   ediff * inv_segments
                 };
 
-    SERIAL_ECHOPAIR("mm=", cartesian_mm);
-    SERIAL_ECHOPAIR(" seconds=", seconds);
-    SERIAL_ECHOPAIR(" laser=", planner.laser_status);
-    SERIAL_ECHOLNPAIR(" segments=", segments);
+    //SERIAL_ECHOPAIR("mm=", cartesian_mm);
+    //SERIAL_ECHOPAIR(" seconds=", seconds);
+    //SERIAL_ECHOPAIR(" laser=", planner.laser_status);
+    //SERIAL_ECHOLNPAIR(" segments=", segments);
 
     // Get the current position as starting point
     float raw[XYZE];
