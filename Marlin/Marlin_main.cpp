@@ -13151,10 +13151,10 @@ void set_current_from_steppers_for_axis(const AxisEnum axis) {
                 ydiff = rtarget[Y_AXIS] - current_position[Y_AXIS];
 
     // If the move is only in Z/E don't split up the move
-    if (!xdiff && !ydiff) {
-      planner.buffer_line_kinematic(rtarget, _feedrate_mm_s, active_extruder);
-      return false; // caller will update current_position
-    }
+    //if (!xdiff && !ydiff) {
+      //planner.buffer_line_kinematic(rtarget, _feedrate_mm_s, active_extruder);
+      //return false; // caller will update current_position
+    //}
     
     // Fail if attempting move outside printable radius
     if (!position_is_reachable(rtarget[X_AXIS], rtarget[Y_AXIS])) return true;
@@ -13170,8 +13170,8 @@ void set_current_from_steppers_for_axis(const AxisEnum axis) {
     // If the move is very short, check the E move distance
     // No E move either? Game over.
     float cartesian_mm = SQRT(sq(xdiff) + sq(ydiff) + sq(zdiff));
-    if (UNEAR_ZERO(cartesian_mm)) cartesian_mm = FABS(ediff);
-    if (UNEAR_ZERO(cartesian_mm)) return false;
+    //if (UNEAR_ZERO(cartesian_mm)) cartesian_mm = FABS(ediff);
+    //if (UNEAR_ZERO(cartesian_mm)) return true;
 
     // Minimum number of seconds to move the given distance
     const float seconds = cartesian_mm / _feedrate_mm_s;
@@ -13197,6 +13197,7 @@ void set_current_from_steppers_for_axis(const AxisEnum axis) {
 
     SERIAL_ECHOPAIR("mm=", cartesian_mm);
     SERIAL_ECHOPAIR(" seconds=", seconds);
+    SERIAL_ECHOPAIR(" laser=", planner.laser_status);
     SERIAL_ECHOLNPAIR(" segments=", segments);
 
     // Get the current position as starting point

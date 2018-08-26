@@ -520,13 +520,13 @@ void Stepper::isr() {
       if (current_block->laser_on)
         //
         if(thermalManager.target_temperature[HOTEND_INDEX] > 254) {
-          WRITE(LASER_FIRING_PIN, LOW);
+          analogWrite(LASER_FIRING_PIN, 0);
         }
         else {
           analogWrite(LASER_FIRING_PIN, 255-thermalManager.target_temperature[HOTEND_INDEX]);
         }
       else
-        WRITE(LASER_FIRING_PIN, HIGH);
+        analogWrite(LASER_FIRING_PIN, 255);
   #endif
 
 
