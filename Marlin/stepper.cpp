@@ -518,9 +518,11 @@ void Stepper::isr() {
 
   #if ENABLED(RESIN)
       if (current_block->laser_on)
-        WRITE(LASER_FIRING_PIN, LOW);
+        //WRITE(LASER_FIRING_PIN, LOW);
+        analogWrite(LASER_FIRING_PIN, 255-thermalManager.target_temperature[HOTEND_INDEX]);
       else
-        WRITE(LASER_FIRING_PIN, HIGH);
+        //WRITE(LASER_FIRING_PIN, HIGH);
+        analogWrite(LASER_FIRING_PIN, 255);
   #endif
 
 

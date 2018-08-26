@@ -13247,6 +13247,11 @@ void set_current_from_steppers_for_axis(const AxisEnum axis) {
 
 #if ENABLED(RESIN)
   
+  //upper left, upper right, lower left, lower right mm offset
+  const float cal_mapx[4] = {-5.0, 5.0, 0.0, 5.0};
+  const float cal_mapy[4] = {-7.0, -10.0, -10.0, -5.0};
+
+
   const float z0_squared = z0*z0;
   float abs_x = 0;
 
@@ -13269,9 +13274,39 @@ void set_current_from_steppers_for_axis(const AxisEnum axis) {
 
 
   void calculate_resin(const float logical[XYZ]){
+
+    float x, adjust_x, cal_x = 0;
+    float y, adjust_y, cal_y = 0;
+    float y0, y1, x0, x1 = 0;
+    x = logical[X_AXIS];
+    y = logical[Y_AXIS];
     
-    float beta_y = fast_atan((logical[Y_AXIS])/z0); //radians
-    float beta_x = fast_atan((logical[X_AXIS])/(r+fast_sqrt(logical[Y_AXIS]*logical[Y_AXIS] + z0_squared)));
+    if (logical[X_AXIS] > 0) {
+      x0 = cal_mapx[3];
+      x1 = cal_mapx[1];
+    }
+    else {
+      x0 = cal_mapx[2];
+      x1 = cal_mapx[0];
+    }
+
+    if (logical[Y_AXIS] > 0) {
+      y0 = cal_mapy[0];
+      y1 = cal_mapy[1];
+    }
+    else {
+      y0 = cal_mapy[2];
+      y1 = cal_mapy[3];
+    }
+    
+
+    cal_x = (x0*(50.0-y) + x1*(y+50.0))/100.0;
+    cal_y = (y0*(50.0-x) + y1*(x+50.0))/100.0;
+    adjust_x = abs(x)/50.0 * cal_x;
+    adjust_y = abs(y)/50.0 * cal_y;
+    
+    float beta_y = fast_atan((logical[Y_AXIS]+adjust_y)/z0); //radians
+    float beta_x = fast_atan((logical[X_AXIS]+adjust_x)/(r+fast_sqrt(logical[Y_AXIS]*logical[Y_AXIS] + z0_squared)));
     
       
     resin[X_AXIS] = beta_x*RESIN_RAD_TO_MM;

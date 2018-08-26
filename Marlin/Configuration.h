@@ -122,12 +122,14 @@
   #define MOTHERBOARD BOARD_RESIN
 #endif
 
+#define BED_DIM                  100
 #define RESIN_SEGMENTS_PER_SECOND 10
 #define Z0_RESIN              150 //Previous value 140
 #define R_RESIN               7.76    //New galvo = 7.76 
 
+#define MAX_ANGLE             36.87  //ATAN(X_DIM/2/Z0_RESIN)*2
 
-#define SIZE_2_ANGLE_RESIN    100.0/35.0
+#define SIZE_2_ANGLE_RESIN    BED_DIM/MAX_ANGLE
 #define RAD_TO_DEG_RESIN      180/3.14159265
 #define RESIN_RAD_TO_MM       RAD_TO_DEG_RESIN * SIZE_2_ANGLE_RESIN
 
@@ -539,7 +541,7 @@
  * Override with M92
  *                                      X, Y, Z, E0 [, E1[, E2[, E3[, E4]]]]
  */
-#define DEFAULT_AXIS_STEPS_PER_UNIT   {328, 328, 804, 4000} //{ 600, 600, 4000, 500 }
+#define DEFAULT_AXIS_STEPS_PER_UNIT   {525, 525, 804, 4000} //{ 600, 600, 4000, 500 }
 
 /**
  * Default Max Feed Rate (mm/s)
