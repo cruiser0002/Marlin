@@ -122,21 +122,22 @@
   #define MOTHERBOARD BOARD_RESIN
 #endif
 
-#define BED_DIM                  100
-#define RESIN_SEGMENTS_PER_SECOND 100
-#define Z0_RESIN              150 //Previous value 140
-#define R_RESIN               7.76    //New galvo = 7.76 
+#define BED_DIM                  120
+#define RESIN_SEGMENTS_PER_SECOND 500
+#define Z0_RESIN              168 
+#define R_RESIN               9    //New galvo = 7.76 
 
-#define MAX_ANGLE             36.87  //ATAN(X_DIM/2/Z0_RESIN)*2
 
-#define SIZE_2_ANGLE_RESIN    BED_DIM/MAX_ANGLE
-#define RAD_TO_DEG_RESIN      180/3.14159265
-#define RESIN_RAD_TO_MM       RAD_TO_DEG_RESIN * SIZE_2_ANGLE_RESIN
+//#define SIZE_2_ANGLE_RESIN    BED_DIM/MAX_ANGLE
+//#define RAD_TO_DEG_RESIN      180/3.14159265
+//#define RESIN_RAD_TO_MM       RAD_TO_DEG_RESIN * SIZE_2_ANGLE_RESIN
 
+
+//#define MAX_ANGLE             45.2//atan((BED_DIM+20)/2/Z0_RESIN)*2*RAD_TO_DEG_RESIN
 
 // Optional custom name for your RepStrap or other custom machine
 // Displayed in the LCD "Ready" message
-//#define CUSTOM_MACHINE_NAME "3D Printer"
+//#define CUSTOM_MACHINE_NAME "Alch3my"
 
 // Define this to set a unique identifier for this printer, (Used by some programs to differentiate between machines)
 // You can use an online service to generate a random UUID. (eg http://www.uuidgenerator.net/version4)
@@ -541,7 +542,8 @@
  * Override with M92
  *                                      X, Y, Z, E0 [, E1[, E2[, E3[, E4]]]]
  */
-#define DEFAULT_AXIS_STEPS_PER_UNIT   {525, 525, 804, 4000} //{ 600, 600, 4000, 500 }
+#define DEFAULT_AXIS_STEPS_PER_UNIT   {30080, 30080, 804, 4000} //{525, 525, 804, 4000} // AROUND 1448 //{525, 525, 804, 4000} 
+ //for resin, x and y are steps per rad
 
 /**
  * Default Max Feed Rate (mm/s)
@@ -801,7 +803,7 @@
 #define Z_MIN_POS 0
 #define X_MAX_POS X_BED_SIZE / 2
 #define Y_MAX_POS Y_BED_SIZE / 2
-#define Z_MAX_POS 120
+#define Z_MAX_POS 160
 
 /**
  * Software Endstops

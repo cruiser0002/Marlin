@@ -520,23 +520,20 @@ void Stepper::isr() {
       if (current_block->laser_on)
         //
         if(thermalManager.target_temperature[HOTEND_INDEX] > 254) {
-          analogWrite(LASER_FIRING_PIN, 0);
+          analogWrite(LASER_FIRING_PIN, 255);
+          //analogWrite(LASER_ENABLE_PIN, 255);
         }
         else {
-          analogWrite(LASER_FIRING_PIN, 255-thermalManager.target_temperature[HOTEND_INDEX]);
+          analogWrite(LASER_FIRING_PIN, thermalManager.target_temperature[HOTEND_INDEX]);
+          //analogWrite(LASER_ENABLE_PIN, thermalManager.target_temperature[HOTEND_INDEX]);
         }
       else
-        analogWrite(LASER_FIRING_PIN, 255);
-  #endif
+      {
+        analogWrite(LASER_FIRING_PIN, 0);
+        //analogWrite(LASER_ENABLE_PIN, 0);
+      }
 
-
-  #if ENABLED(RESIN)
-
-    //if (_COUNTER(X) > 0) {
-
-      //_COUNTER(X) -= current_block->step_event_count;
-      //count_position[_AXIS(X)] += count_direction[_AXIS(X)];
-
+      //x_dac_position = count_position[_AXIS(X)] + 0x8000;
       x_dac_position = count_position[_AXIS(X)] + 0x8000;
 
       resin_spi_part1 = (uint8_t)((x_dac_position >> 8) & 0xFF);
@@ -548,18 +545,7 @@ void Stepper::isr() {
       SPI.transfer(resin_spi_part1);
       SPI.transfer(resin_spi_part2);
       WRITE(GALVO_SS_PIN, HIGH);
-    //}
-  #endif
-
-
-
-
-  #if ENABLED(RESIN)
-    //if (_COUNTER(Y) > 0) {
-
-      //_COUNTER(Y) -= current_block->step_event_count;
-      //count_position[_AXIS(Y)] += count_direction[_AXIS(Y)];
-
+    
       y_dac_position = count_position[_AXIS(Y)] + 0x8000;
 
       resin_spi_part1 = (uint8_t)((y_dac_position >> 8) & 0xFF);
@@ -571,11 +557,15 @@ void Stepper::isr() {
       SPI.transfer(resin_spi_part1);
       SPI.transfer(resin_spi_part2);
       WRITE(GALVO_SS_PIN, HIGH);
-    //}
+    
 #endif
 
   // Take multiple steps per interrupt (For high speed moves)
   bool all_steps_done = false;
+
+  #if ENABLED(RESIN)
+
+  #endif
   for (uint8_t i = step_loops; i--;) {
     #if ENABLED(LIN_ADVANCE)
 
@@ -687,12 +677,17 @@ void Stepper::isr() {
       uint32_t pulse_start = TCNT0;
     #endif
 
-    #if HAS_X_STEP
-      PULSE_START(X);
+    #if DISABLED(RESIN1)
+
+      #if HAS_X_STEP
+        PULSE_START(X);
+      #endif
+      #if HAS_Y_STEP
+        PULSE_START(Y);
+      #endif
+
     #endif
-    #if HAS_Y_STEP
-      PULSE_START(Y);
-    #endif
+
     #if HAS_Z_STEP
       PULSE_START(Z);
     #endif
@@ -722,12 +717,15 @@ void Stepper::isr() {
       DELAY_NOPS(EXTRA_CYCLES_XYZE);
     #endif
 
-    #if HAS_X_STEP
-      PULSE_STOP(X);
+    #if DISABLED(RESIN1)
+      #if HAS_X_STEP
+        PULSE_STOP(X);
+      #endif
+      #if HAS_Y_STEP
+        PULSE_STOP(Y);
+      #endif
     #endif
-    #if HAS_Y_STEP
-      PULSE_STOP(Y);
-    #endif
+
     #if HAS_Z_STEP
       PULSE_STOP(Z);
     #endif

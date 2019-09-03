@@ -234,6 +234,9 @@
  * M363 - SCARA calibration: Move to cal-position PsiB (90 deg calibration - steps per degree)
  * M364 - SCARA calibration: Move to cal-position PSIC (90 deg to Theta calibration position)
  *
+ * M898 - RESIN turn off laser manually
+ * M899 - RESIN turn on laser manually
+ *
  * ************ Custom codes - This can change to suit future G-code regulations
  * M928 - Start SD logging: "M928 filename.gco". Stop with M29. (Requires SDSUPPORT)
  * M999 - Restart after being stopped by error
@@ -608,8 +611,8 @@ uint8_t target_extruder;
   float resin[XYZE];
   const float z0 = Z0_RESIN;
   const float r = R_RESIN;
-  const float size_2_angle = SIZE_2_ANGLE_RESIN;
-  const float rad_to_deg = RAD_TO_DEG_RESIN;
+//  const float size_2_angle = SIZE_2_ANGLE_RESIN;
+//  const float rad_to_deg = RAD_TO_DEG_RESIN;
 
   void calculate_resin(const float logical[XYZ]);
 
@@ -6265,6 +6268,24 @@ inline void gcode_G92() {
 
   report_current_position();
 }
+
+
+#if ENABLED(RESIN)
+    inline void gcode_M899() {
+      SERIAL_ECHOLNPGM("laser ON");
+      analogWrite(LASER_FIRING_PIN, 32);
+    }
+
+    inline void gcode_M898() {
+      SERIAL_ECHOLNPGM("laser OFF");
+      analogWrite(LASER_FIRING_PIN, 0);
+    }
+
+#endif
+
+
+
+
 
 #if HAS_RESUME_CONTINUE
 
@@ -12335,6 +12356,15 @@ void process_parsed_command() {
           break;
       #endif
 
+      #if ENABLED(RESIN)
+        case 898:
+          gcode_M898(); // M898: turn laser off
+          break;  
+        case 899:
+          gcode_M899(); // M899: turn laser on
+          break;
+      #endif  
+
       #if ENABLED(LIN_ADVANCE)
         case 900: // M900: Set advance K factor.
           gcode_M900();
@@ -13205,31 +13235,22 @@ void set_current_from_steppers_for_axis(const AxisEnum axis) {
     COPY(raw, current_position);
 
     // Calculate and execute the segments
+    
     while (--segments) {
-
-      /*
-      static millis_t next_idle_ms = millis() + 200UL;
-      thermalManager.manage_heater();  // This returns immediately if not really needed.
-      if (ELAPSED(millis(), next_idle_ms)) {
-        next_idle_ms = millis() + 200UL;
-        idle();
-      }
-      */
-
       LOOP_XYZE(i) raw[i] += segment_distance[i];
 
       calculate_resin(raw);
-
-      //planner.dac_X = uint16_t(resin[X_AXIS]) + 0x8000;
-      //planner.dac_Y = uint16_t(resin[Y_AXIS]) + 0x8000;
+      
+      //planner.dac_X = uint16_t(LROUND(resin[X_AXIS] * planner.axis_steps_per_mm[X_AXIS])) + 0x8000;
+      //planner.dac_Y = uint16_t(LROUND(resin[Y_AXIS] * planner.axis_steps_per_mm[Y_AXIS])) + 0x8000;
       planner.buffer_segment(resin[X_AXIS], resin[Y_AXIS], resin[Z_AXIS], 0.0, _feedrate_mm_s, active_extruder);
       //planner.buffer_segment(0, 0, resin[Z_AXIS], 0.0, _feedrate_mm_s, active_extruder);
     }
 
     // Ensure last segment arrives at target location.
     calculate_resin(rtarget);
-    //planner.dac_X = uint16_t(resin[X_AXIS]) + 0x8000;
-    //planner.dac_Y = uint16_t(resin[Y_AXIS]) + 0x8000;
+    //planner.dac_X = uint16_t(LROUND(resin[X_AXIS] * planner.axis_steps_per_mm[X_AXIS])) + 0x8000;
+    //planner.dac_Y = uint16_t(LROUND(resin[Y_AXIS] * planner.axis_steps_per_mm[Y_AXIS])) + 0x8000;
     planner.buffer_segment(resin[X_AXIS], resin[Y_AXIS], resin[Z_AXIS], 0.0, _feedrate_mm_s, active_extruder);
     //planner.buffer_segment(0, 0, resin[Z_AXIS], 0.0, _feedrate_mm_s, active_extruder);
     planner.laser_status = false;
@@ -13249,19 +13270,30 @@ void set_current_from_steppers_for_axis(const AxisEnum axis) {
 #if ENABLED(RESIN)
   
   //upper left, upper right, lower left, lower right mm offset
-  const float cal_mapx[4] = {-5.0, 5.0, 0.0, 5.0};
-  const float cal_mapy[4] = {-7.0, -10.0, -10.0, -5.0};
+  const float cal_mapx[4] = {0,0,0,0};//{-5.0, 5.0, 0.0, 5.0};
+  const float cal_mapy[4] = {0,0,0,0};//{-7.0, -10.0, -10.0, -5.0};
 
+  const float pi_div_4 = 0.7853981634;
 
   const float z0_squared = z0*z0;
-  float abs_x = 0;
+  const float inv_z0 = 1.0/z0;
+  //float abs_x = 0;
 
-  float fast_atan(float x) {
-    abs_x = fabs(x);
-    return 0.7853981634*x - x*(abs_x-1)*(0.2447 + 0.0663*abs_x);
+  
+  inline float fast_atan(float x) {
+    //return atan(x);
+    float abs_x = fabs(x);
+    return pi_div_4*x - x*(abs_x-1)*(0.2447 + 0.0663*abs_x);
   }
+
+  /*
+  inline float fast_atan(float x) {
+    return pi_div_4*x - 0.273*x*(1-fabs(x));
+  }
+  */
  
-  float fast_sqrt(float x) {
+  inline float fast_sqrt(float x) {
+    //return SQRT(x);
     float xhalf = 0.5*x;
     union {
         float x;
@@ -13275,51 +13307,16 @@ void set_current_from_steppers_for_axis(const AxisEnum axis) {
 
 
   void calculate_resin(const float logical[XYZ]){
-
-    float x, adjust_x, cal_x = 0;
-    float y, adjust_y, cal_y = 0;
-    float y0, y1, x0, x1 = 0;
-    x = logical[X_AXIS];
-    y = logical[Y_AXIS];
-    
-    if (logical[X_AXIS] > 0) {
-      x0 = cal_mapx[3];
-      x1 = cal_mapx[1];
-    }
-    else {
-      x0 = cal_mapx[2];
-      x1 = cal_mapx[0];
-    }
-
-    if (logical[Y_AXIS] > 0) {
-      y0 = cal_mapy[0];
-      y1 = cal_mapy[1];
-    }
-    else {
-      y0 = cal_mapy[2];
-      y1 = cal_mapy[3];
-    }
     
 
-    cal_x = (x0*(50.0-y) + x1*(y+50.0))/100.0;
-    cal_y = (y0*(50.0-x) + y1*(x+50.0))/100.0;
-    adjust_x = abs(x)/50.0 * cal_x;
-    adjust_y = abs(y)/50.0 * cal_y;
     
-    float beta_y = fast_atan((logical[Y_AXIS]+adjust_y)/z0); //radians
-    float beta_x = fast_atan((logical[X_AXIS]+adjust_x)/(r+fast_sqrt(logical[Y_AXIS]*logical[Y_AXIS] + z0_squared)));
-    
-      
-    resin[X_AXIS] = beta_x*RESIN_RAD_TO_MM;
-    resin[Y_AXIS] = beta_y*RESIN_RAD_TO_MM;
+    digitalWrite(35, HIGH);
+    resin[X_AXIS] = atan((logical[X_AXIS])/(r+SQRT(logical[Y_AXIS]*logical[Y_AXIS] + z0_squared)));//*RESIN_RAD_TO_MM;
+    resin[Y_AXIS] = atan((logical[Y_AXIS])*inv_z0);//*RESIN_RAD_TO_MM;    
     resin[Z_AXIS] = logical[Z_AXIS];
-    
+    digitalWrite(35, LOW);
 
-    /*
-    resin[X_AXIS] = logical[X_AXIS];
-    resin[Y_AXIS] = logical[Y_AXIS];
-    resin[Z_AXIS] = logical[Z_AXIS];
-    */
+
 
   }
 
@@ -14774,10 +14771,16 @@ void setup() {
   //void Stepper::resin_init() {
 
     pinMode(LASER_FIRING_PIN, OUTPUT);
-    digitalWrite(LASER_FIRING_PIN, HIGH);
+    digitalWrite(LASER_FIRING_PIN, LOW); 
     
     pinMode(LASER_ENABLE_PIN, OUTPUT);
     digitalWrite(LASER_ENABLE_PIN, LOW);
+/*
+    int myEraser = 7;             // this is 111 in binary and is used as an eraser
+    TCCR3B &= ~myEraser;
+    int myPrescaler = 2;         // this could be a number in [1 , 6]. In this case, 3 corresponds in binary to 011.   
+    TCCR3B |= myPrescaler;
+*/
     
     pinMode(CASE_OPEN_PIN, INPUT);
     //digitalWrite(CASE_OPEN_PIN, HIGH);

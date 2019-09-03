@@ -407,6 +407,7 @@ class Temperature {
       #if ENABLED(RESIN)
         current_temperature[HOTEND_INDEX] = target_temperature[HOTEND_INDEX];
         //analogWrite(LASER_FIRING_PIN, 255-target_temperature[HOTEND_INDEX]);
+        //analogWrite(LASER_ENABLE_PIN, target_temperature[HOTEND_INDEX]);
         if(current_temperature[HOTEND_INDEX] > 1) {
           digitalWrite(LASER_ENABLE_PIN, HIGH);
         }
