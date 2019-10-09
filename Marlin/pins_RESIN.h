@@ -55,9 +55,10 @@
 #define CASE_OPEN2_PIN     27
 
 
-
-
-
+#define DEBUG4				4
+#define DEBUG5				5
+#define DEBUG6				6
+#define DEBUG7				7
 
 #define HEATER_0_PIN     11   // EXTRUDER 1
 

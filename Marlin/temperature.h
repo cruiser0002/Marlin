@@ -375,21 +375,21 @@ class Temperature {
     //deg=degreeCelsius
 
     FORCE_INLINE static float degHotend(const uint8_t e) {
-      #if HOTENDS == 1
-        UNUSED(e);
-      #endif
-#if ENABLED(RESIN)
-		return target_temperature[HOTEND_INDEX];
-#else 
-		return current_temperature[HOTEND_INDEX];
-#endif
-    }
-    static float degBed() {
-#if ENABLED(RESIN)
-		return target_temperature_bed;
-#else 
-		return current_temperature_bed;
-#endif
+          #if HOTENDS == 1
+            UNUSED(e);
+          #endif
+          #if ENABLED(RESIN)
+          		return target_temperature[HOTEND_INDEX];
+          #else 
+          		return current_temperature[HOTEND_INDEX];
+          #endif
+          }
+          static float degBed() {
+          #if ENABLED(RESIN) && HAS_HEATED_BED
+          		return target_temperature_bed;
+          #elif HAS_HEATED_BED
+          		return current_temperature_bed;
+          #endif
 	}
 
     #if ENABLED(SHOW_TEMP_ADC_VALUES)
@@ -482,7 +482,7 @@ class Temperature {
         #if ENABLED(RESIN)
           current_temperature_bed = target_temperature_bed;
         #endif
-      #endif
+      
     }
 
       #if WATCH_THE_BED

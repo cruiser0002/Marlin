@@ -142,7 +142,6 @@ uint8_t Stepper::steps_per_isr;
 #endif
 
 
-volatile uint32_t Stepper::step_events_completed = 0; // The number of step events executed in the current block
 #if DISABLED(ADAPTIVE_STEP_SMOOTHING)
   constexpr
 #endif
@@ -1326,11 +1325,7 @@ void Stepper::stepper_pulse_phase_isr() {
   // Take multiple steps per interrupt (For high speed moves)
   bool all_steps_done = false;
 
-  #if ENABLED(RESIN)
 
-  #endif
-  for (uint8_t i = step_loops; i--;) {
-    #if ENABLED(LIN_ADVANCE)
   // Count of pending loops and events for this iteration
   const uint32_t pending_events = step_event_count - step_events_completed;
   uint8_t events_to_do = MIN(pending_events, steps_per_isr);
@@ -1585,6 +1580,15 @@ uint32_t Stepper::stepper_block_phase_isr() {
         // The timer interval is just the nominal value for the nominal speed
         interval = ticks_nominal;
       }
+      #if ENABLED(RESIN0)
+        if (ticks_nominal < 0) {
+          // step_rate to timer interval and loops for the nominal speed
+          ticks_nominal = calc_timer_interval(current_block->nominal_rate, oversampling_factor, &steps_per_isr);
+        }
+
+        // The timer interval is just the nominal value for the nominal speed
+        interval = ticks_nominal;
+      #endif
     }
   }
 

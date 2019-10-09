@@ -689,6 +689,16 @@ class Planner {
         if (block_buffer_tail == block_buffer_planned)
           block_buffer_planned = block_buffer_nonbusy;
 
+  /* <-- add a slash to enable
+    SERIAL_ECHOPAIR(" accelerate_until", block->accelerate_until);
+    SERIAL_ECHOPAIR(" decelerate_after", block->decelerate_after);
+    SERIAL_ECHOPAIR(" nominal_rate", block->nominal_rate);
+  //*/
+        analogWrite(DEBUG6, block->dac_X >> 8);
+        analogWrite(DEBUG7, block->dac_Y >> 8);
+
+
+
         // Return the block
         return block;
       }
@@ -697,6 +707,8 @@ class Planner {
       #if ENABLED(ULTRA_LCD)
         clear_block_buffer_runtime(); // paranoia. Buffer is empty now - so reset accumulated time to zero.
       #endif
+
+
 
       return NULL;
     }

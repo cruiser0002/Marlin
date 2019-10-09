@@ -93,13 +93,13 @@ Planner planner;
  * A ring buffer of moves described in steps
  */
 block_t Planner::block_buffer[BLOCK_BUFFER_SIZE];
-volatile uint8_t Planner::block_buffer_head = 0,           // Index of the next block to be pushed
-                 Planner::block_buffer_tail = 0;
+
 #if ENABLED(RESIN)
   bool Planner::laser_status = false;              //bypass the use of extrusion motor for turning on the laser
   uint16_t Planner::dac_X = 0, Planner::dac_Y = 0, Planner::dac_step_X = 0, Planner::dac_step_Y = 0;
 
 #endif
+
 volatile uint8_t Planner::block_buffer_head,    // Index of the next block to be pushed
                  Planner::block_buffer_nonbusy, // Index of the first non-busy block
                  Planner::block_buffer_planned, // Index of the optimally planned block
@@ -715,10 +715,19 @@ void Planner::calculate_trapezoid_for_block(block_t* const block, const float &e
 
   const int32_t accel = block->acceleration_steps_per_s2;
 
+
+  #if ENABLED(RESIN0)
+    uint32_t accelerate_steps = 0;
+    uint32_t decelerate_steps = 0;
+  #else
           // Steps required for acceleration, deceleration to/from nominal rate
-  uint32_t accelerate_steps = CEIL(estimate_acceleration_distance(initial_rate, block->nominal_rate, accel)),
-           decelerate_steps = FLOOR(estimate_acceleration_distance(block->nominal_rate, final_rate, -accel));
+    uint32_t accelerate_steps = CEIL(estimate_acceleration_distance(initial_rate, block->nominal_rate, accel)),
+            decelerate_steps = FLOOR(estimate_acceleration_distance(block->nominal_rate, final_rate, -accel));
           // Steps between acceleration and deceleration, if any
+  #endif
+  
+
+
   int32_t plateau_steps = block->step_event_count - accelerate_steps - decelerate_steps;
 
   // Does accelerate_steps + decelerate_steps exceed step_event_count?

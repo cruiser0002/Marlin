@@ -13405,10 +13405,13 @@ void set_current_from_steppers_for_axis(const AxisEnum axis) {
     uint16_t segments = resin_segments_per_second * seconds;
 
     // Minimum segment size is 0.25mm
-    NOMORE(segments, cartesian_mm * 4);
+    NOMORE(segments, cartesian_mm * 4); //cartesian_mm * 4
  
     // At least one segment is required
     NOLESS(segments, 1);
+
+    //set segments to 1 for debug
+    //segments = 4;
 
     // The approximate length of each segment
     const float inv_segments = 1.0 / float(segments),
@@ -13419,10 +13422,12 @@ void set_current_from_steppers_for_axis(const AxisEnum axis) {
                   ediff * inv_segments
                 };
 
+    const float cartesian_segment_mm = cartesian_mm * inv_segments;
+    
     //SERIAL_ECHOPAIR("mm=", cartesian_mm);
     //SERIAL_ECHOPAIR(" seconds=", seconds);
     //SERIAL_ECHOPAIR(" laser=", planner.laser_status);
-    //SERIAL_ECHOLNPAIR(" segments=", segments);
+    SERIAL_ECHOLNPAIR(" segments=", segments);
 
     // Get the current position as starting point
     float raw[XYZE];
@@ -13435,17 +13440,17 @@ void set_current_from_steppers_for_axis(const AxisEnum axis) {
 
       calculate_resin(raw);
       
-      //planner.dac_X = uint16_t(LROUND(resin[X_AXIS] * planner.axis_steps_per_mm[X_AXIS])) + 0x8000;
-      //planner.dac_Y = uint16_t(LROUND(resin[Y_AXIS] * planner.axis_steps_per_mm[Y_AXIS])) + 0x8000;
-      planner.buffer_segment(resin[X_AXIS], resin[Y_AXIS], resin[Z_AXIS], 0.0, _feedrate_mm_s, active_extruder);
+      planner.dac_X = uint16_t(LROUND(resin[X_AXIS] * planner.axis_steps_per_mm[X_AXIS])) + 0x8000;
+      planner.dac_Y = uint16_t(LROUND(resin[Y_AXIS] * planner.axis_steps_per_mm[Y_AXIS])) + 0x8000;
+      planner.buffer_segment(resin[X_AXIS], resin[Y_AXIS], resin[Z_AXIS], 0.0, _feedrate_mm_s, active_extruder, cartesian_segment_mm);
       //planner.buffer_segment(0, 0, resin[Z_AXIS], 0.0, _feedrate_mm_s, active_extruder);
     }
 
     // Ensure last segment arrives at target location.
     calculate_resin(rtarget);
-    //planner.dac_X = uint16_t(LROUND(resin[X_AXIS] * planner.axis_steps_per_mm[X_AXIS])) + 0x8000;
-    //planner.dac_Y = uint16_t(LROUND(resin[Y_AXIS] * planner.axis_steps_per_mm[Y_AXIS])) + 0x8000;
-    planner.buffer_segment(resin[X_AXIS], resin[Y_AXIS], resin[Z_AXIS], 0.0, _feedrate_mm_s, active_extruder);
+    planner.dac_X = uint16_t(LROUND(resin[X_AXIS] * planner.axis_steps_per_mm[X_AXIS])) + 0x8000;
+    planner.dac_Y = uint16_t(LROUND(resin[Y_AXIS] * planner.axis_steps_per_mm[Y_AXIS])) + 0x8000;
+    planner.buffer_segment(resin[X_AXIS], resin[Y_AXIS], resin[Z_AXIS], 0.0, _feedrate_mm_s, active_extruder, cartesian_segment_mm);
     //planner.buffer_segment(0, 0, resin[Z_AXIS], 0.0, _feedrate_mm_s, active_extruder);
     planner.laser_status = false;
     //planner.buffer_segment(resin[X_AXIS], resin[Y_AXIS], resin[Z_AXIS], 0.0, _feedrate_mm_s, active_extruder);
@@ -13504,11 +13509,11 @@ void set_current_from_steppers_for_axis(const AxisEnum axis) {
     
 
     
-    digitalWrite(35, HIGH);
-    resin[X_AXIS] = atan((logical[X_AXIS])/(r+SQRT(logical[Y_AXIS]*logical[Y_AXIS] + z0_squared)));//*RESIN_RAD_TO_MM;
-    resin[Y_AXIS] = atan((logical[Y_AXIS])*inv_z0);//*RESIN_RAD_TO_MM;    
+    //digitalWrite(35, HIGH);
+    resin[X_AXIS] = atan((logical[X_AXIS])/(r+SQRT(logical[Y_AXIS]*logical[Y_AXIS] + z0_squared)));
+    resin[Y_AXIS] = atan((logical[Y_AXIS])*inv_z0);   
     resin[Z_AXIS] = logical[Z_AXIS];
-    digitalWrite(35, LOW);
+    //digitalWrite(35, LOW);
 
 
 
@@ -14900,6 +14905,18 @@ void setup() {
     
     pinMode(LASER_ENABLE_PIN, OUTPUT);
     digitalWrite(LASER_ENABLE_PIN, LOW);
+
+    pinMode(DEBUG4, OUTPUT);
+    analogWrite(DEBUG4, 50);
+
+    pinMode(DEBUG5, OUTPUT);
+    analogWrite(DEBUG5, 100);
+
+    pinMode(DEBUG6, OUTPUT);
+    analogWrite(DEBUG6, 150);
+
+    pinMode(DEBUG7, OUTPUT);
+    analogWrite(DEBUG7, 200);
 /*
     int myEraser = 7;             // this is 111 in binary and is used as an eraser
     TCCR3B &= ~myEraser;
