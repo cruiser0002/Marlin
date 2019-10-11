@@ -250,8 +250,6 @@ class Stepper {
   private:
 
     #if ENABLED(RESIN)
-       static uint8_t resin_spi_part1;
-       static uint8_t resin_spi_part2;
        static uint16_t x_dac_position;
        static uint16_t y_dac_position;
     #endif
@@ -538,9 +536,6 @@ class Stepper {
       static void microstep_init();
     #endif
 
-    #if ENABLED(RESIN)
-      //static void resin_init();
-    #endif
 
 };
 

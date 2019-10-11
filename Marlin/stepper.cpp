@@ -135,8 +135,6 @@ uint32_t Stepper::acceleration_time, Stepper::deceleration_time;
 uint8_t Stepper::steps_per_isr;
 
 #if ENABLED(RESIN)
-  uint8_t Stepper::resin_spi_part1 = 0;
-  uint8_t Stepper::resin_spi_part2 = 0;
   uint16_t Stepper::y_dac_position = 0;
   uint16_t Stepper::x_dac_position = 0;
 #endif
@@ -1264,7 +1262,7 @@ void Stepper::isr() {
  * is to keep pulse timing as regular as possible.
  */
 void Stepper::stepper_pulse_phase_isr() {
-
+  WRITE(DEBUG7, HIGH);
   // If we must abort the current block, do so!
   if (abort_current_block) {
     abort_current_block = false;
@@ -1294,32 +1292,19 @@ void Stepper::stepper_pulse_phase_isr() {
         analogWrite(LASER_FIRING_PIN, 0);
         //analogWrite(LASER_ENABLE_PIN, 0);
       }
-
-      //x_dac_position = count_position[_AXIS(X)] + 0x8000;
-      x_dac_position = count_position[_AXIS(X)] + 0x8000;
-
-      resin_spi_part1 = (uint8_t)((x_dac_position >> 8) & 0xFF);
-      resin_spi_part2 = (uint8_t)(x_dac_position & 0xFF);
+      //analogWrite(DEBUG5, (count_position[X_AXIS] + 0x8000) >> 8);
+      //analogWrite(DEBUG6, (count_position[X_AXIS] + 0x8000) >> 8);
 
       WRITE(GALVO_SS_PIN, LOW);
-
       SPI.transfer(0x30);
-      SPI.transfer(resin_spi_part1);
-      SPI.transfer(resin_spi_part2);
+      SPI.transfer16(count_position[_AXIS(X)] + 0x8000);
       WRITE(GALVO_SS_PIN, HIGH);
-    
-      y_dac_position = count_position[_AXIS(Y)] + 0x8000;
-
-      resin_spi_part1 = (uint8_t)((y_dac_position >> 8) & 0xFF);
-      resin_spi_part2 = (uint8_t)(y_dac_position & 0xFF);
 
       WRITE(GALVO_SS_PIN, LOW);
-
       SPI.transfer(0x31);
-      SPI.transfer(resin_spi_part1);
-      SPI.transfer(resin_spi_part2);
+      SPI.transfer16(count_position[_AXIS(Y)] + 0x8000);
       WRITE(GALVO_SS_PIN, HIGH);
-    
+   
 #endif
 
   // Take multiple steps per interrupt (For high speed moves)
@@ -1361,16 +1346,39 @@ void Stepper::stepper_pulse_phase_isr() {
       } \
     }while(0)
 
-    // Pulse start
-    #if HAS_X_STEP
-      PULSE_START(X);
-    #endif
-    #if HAS_Y_STEP
-      PULSE_START(Y);
+    #if ENABLED(RESIN)
+      #define COUNT_START(AXIS) do{ \
+        delta_error[_AXIS(AXIS)] += advance_dividend[_AXIS(AXIS)]; \
+        if (delta_error[_AXIS(AXIS)] >= 0) { \
+          count_position[_AXIS(AXIS)] += count_direction[_AXIS(AXIS)]; \
+        } \
+      }while(0)
+
+      // Stop an active pulse, if any, and adjust error term
+      #define COUNT_STOP(AXIS) do { \
+        if (delta_error[_AXIS(AXIS)] >= 0) { \
+          delta_error[_AXIS(AXIS)] -= advance_divisor; \
+        } \
+      }while(0)
     #endif
 
-    #if HAS_Z_STEP
+    #if ENABLED(RESIN)
+      COUNT_START(X);
+      COUNT_START(Y);
       PULSE_START(Z);
+    #else
+
+      // Pulse start
+      #if HAS_X_STEP
+        PULSE_START(X);
+      #endif
+      #if HAS_Y_STEP
+        PULSE_START(Y);
+      #endif
+
+      #if HAS_Z_STEP
+        PULSE_START(Z);
+      #endif
     #endif
 
     // Pulse E/Mixing extruders
@@ -1415,16 +1423,22 @@ void Stepper::stepper_pulse_phase_isr() {
     // Add the delay needed to ensure the maximum driver rate is enforced
     if (signed(added_step_ticks) > 0) pulse_end += hal_timer_t(added_step_ticks);
 
-    // Pulse stop
-    #if HAS_X_STEP
-      PULSE_STOP(X);
-    #endif
-    #if HAS_Y_STEP
-      PULSE_STOP(Y);
-    #endif
-
-    #if HAS_Z_STEP
+    #if ENABLED(RESIN)
+      COUNT_STOP(X);
+      COUNT_STOP(Y);
       PULSE_STOP(Z);
+    #else
+      // Pulse stop
+      #if HAS_X_STEP
+        PULSE_STOP(X);
+      #endif
+      #if HAS_Y_STEP
+        PULSE_STOP(Y);
+      #endif
+
+      #if HAS_Z_STEP
+        PULSE_STOP(Z);
+      #endif
     #endif
 
     #if DISABLED(LIN_ADVANCE)
@@ -1454,6 +1468,8 @@ void Stepper::stepper_pulse_phase_isr() {
     }
 
   } while (events_to_do);
+
+  WRITE(DEBUG7, LOW);
 }
 
 // This is the last half of the stepper interrupt: This one processes and

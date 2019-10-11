@@ -13362,106 +13362,6 @@ void set_current_from_steppers_for_axis(const AxisEnum axis) {
 #endif // AUTO_BED_LEVELING_BILINEAR
 #endif // IS_CARTESIAN
 
-
-#if ENABLED(RESIN)
-
-  bool prepare_resin_move_to(const float (&rtarget)[XYZE]) {
-    planner.laser_status = false;
-
-    // Get the top feedrate of the move in the XY plane
-    const float _feedrate_mm_s = MMS_SCALED(feedrate_mm_s);
-
-    const float xdiff = rtarget[X_AXIS] - current_position[X_AXIS],
-                ydiff = rtarget[Y_AXIS] - current_position[Y_AXIS];
-
-    // If the move is only in Z/E don't split up the move
-    //if (!xdiff && !ydiff) {
-      //planner.buffer_line_kinematic(rtarget, _feedrate_mm_s, active_extruder);
-      //return false; // caller will update current_position
-    //}
-    
-    // Fail if attempting move outside printable radius
-    if (!position_is_reachable(rtarget[X_AXIS], rtarget[Y_AXIS])) return true;
-
-    // Remaining cartesian distances
-    const float zdiff = rtarget[Z_AXIS] - current_position[Z_AXIS],
-                ediff = rtarget[E_AXIS] - current_position[E_AXIS];
-    
-    if (current_position[E_AXIS] < destination[E_AXIS])
-      planner.laser_status = true;
-    
-    // Get the linear distance in XYZ
-    // If the move is very short, check the E move distance
-    // No E move either? Game over.
-    float cartesian_mm = SQRT(sq(xdiff) + sq(ydiff) + sq(zdiff));
-    //if (UNEAR_ZERO(cartesian_mm)) cartesian_mm = FABS(ediff);
-    //if (UNEAR_ZERO(cartesian_mm)) return true;
-
-    // Minimum number of seconds to move the given distance
-    const float seconds = cartesian_mm / _feedrate_mm_s;
-
-    // The number of segments-per-second times the duration
-    // gives the number of segments
-    uint16_t segments = resin_segments_per_second * seconds;
-
-    // Minimum segment size is 0.25mm
-    NOMORE(segments, cartesian_mm * 4); //cartesian_mm * 4
- 
-    // At least one segment is required
-    NOLESS(segments, 1);
-
-    //set segments to 1 for debug
-    //segments = 4;
-
-    // The approximate length of each segment
-    const float inv_segments = 1.0 / float(segments),
-                segment_distance[XYZE] = {
-                  xdiff * inv_segments,
-                  ydiff * inv_segments,
-                  zdiff * inv_segments,
-                  ediff * inv_segments
-                };
-
-    const float cartesian_segment_mm = cartesian_mm * inv_segments;
-    
-    //SERIAL_ECHOPAIR("mm=", cartesian_mm);
-    //SERIAL_ECHOPAIR(" seconds=", seconds);
-    //SERIAL_ECHOPAIR(" laser=", planner.laser_status);
-    SERIAL_ECHOLNPAIR(" segments=", segments);
-
-    // Get the current position as starting point
-    float raw[XYZE];
-    COPY(raw, current_position);
-
-    // Calculate and execute the segments
-    
-    while (--segments) {
-      LOOP_XYZE(i) raw[i] += segment_distance[i];
-
-      calculate_resin(raw);
-      
-      planner.dac_X = uint16_t(LROUND(resin[X_AXIS] * planner.axis_steps_per_mm[X_AXIS])) + 0x8000;
-      planner.dac_Y = uint16_t(LROUND(resin[Y_AXIS] * planner.axis_steps_per_mm[Y_AXIS])) + 0x8000;
-      planner.buffer_segment(resin[X_AXIS], resin[Y_AXIS], resin[Z_AXIS], 0.0, _feedrate_mm_s, active_extruder, cartesian_segment_mm);
-      //planner.buffer_segment(0, 0, resin[Z_AXIS], 0.0, _feedrate_mm_s, active_extruder);
-    }
-
-    // Ensure last segment arrives at target location.
-    calculate_resin(rtarget);
-    planner.dac_X = uint16_t(LROUND(resin[X_AXIS] * planner.axis_steps_per_mm[X_AXIS])) + 0x8000;
-    planner.dac_Y = uint16_t(LROUND(resin[Y_AXIS] * planner.axis_steps_per_mm[Y_AXIS])) + 0x8000;
-    planner.buffer_segment(resin[X_AXIS], resin[Y_AXIS], resin[Z_AXIS], 0.0, _feedrate_mm_s, active_extruder, cartesian_segment_mm);
-    //planner.buffer_segment(0, 0, resin[Z_AXIS], 0.0, _feedrate_mm_s, active_extruder);
-    planner.laser_status = false;
-    //planner.buffer_segment(resin[X_AXIS], resin[Y_AXIS], resin[Z_AXIS], 0.0, _feedrate_mm_s, active_extruder);
-
-
-    return false; // caller will update current_position
-
-  }
-
-#endif
-
 /**
  * Resin forward kinematics math
  **/
@@ -13474,7 +13374,7 @@ void set_current_from_steppers_for_axis(const AxisEnum axis) {
 
   const float pi_div_4 = 0.7853981634;
 
-  const float z0_squared = z0*z0;
+  const float z0_squared = sq(z0);
   const float inv_z0 = 1.0/z0;
   //float abs_x = 0;
 
@@ -13506,20 +13406,120 @@ void set_current_from_steppers_for_axis(const AxisEnum axis) {
 
 
   void calculate_resin(const float logical[XYZ]){
+    //WRITE(DEBUG5, HIGH);
     
-
-    
-    //digitalWrite(35, HIGH);
-    resin[X_AXIS] = atan((logical[X_AXIS])/(r+SQRT(logical[Y_AXIS]*logical[Y_AXIS] + z0_squared)));
-    resin[Y_AXIS] = atan((logical[Y_AXIS])*inv_z0);   
+    resin[X_AXIS] = fast_atan((logical[X_AXIS])/(r+fast_sqrt(sq(logical[Y_AXIS]) + z0_squared)));
+    resin[Y_AXIS] = fast_atan((logical[Y_AXIS])*inv_z0);   
     resin[Z_AXIS] = logical[Z_AXIS];
-    //digitalWrite(35, LOW);
+    //WRITE(DEBUG5, LOW);
+  }
+
+#endif
+
+#if ENABLED(RESIN)
+
+  bool prepare_resin_move_to(const float (&rtarget)[XYZE]) {
+
+    //WRITE(DEBUG6, HIGH);
+    planner.laser_status = false;
 
 
+    // Get the top feedrate of the move in the XY plane
+    const float _feedrate_mm_s = MMS_SCALED(feedrate_mm_s);
+
+    const float xdiff = rtarget[X_AXIS] - current_position[X_AXIS],
+                ydiff = rtarget[Y_AXIS] - current_position[Y_AXIS];
+
+    // If the move is only in Z/E don't split up the move
+    //if (!xdiff && !ydiff) {
+      //planner.buffer_line_kinematic(rtarget, _feedrate_mm_s, active_extruder);
+      //return false; // caller will update current_position
+    //}
+    
+    // Fail if attempting move outside printable radius
+    if (!position_is_reachable(rtarget[X_AXIS], rtarget[Y_AXIS])) return true;
+
+    // Remaining cartesian distances
+    const float zdiff = rtarget[Z_AXIS] - current_position[Z_AXIS]; 
+                //ediff = rtarget[E_AXIS] - current_position[E_AXIS];
+    
+    
+
+    if (current_position[E_AXIS] < rtarget[E_AXIS]) //destination
+      planner.laser_status = true;
+    
+    // Get the linear distance in XY
+    // Z travel does not influence the number of generated segments
+    //float cartesian_mm = fast_sqrt(sq(xdiff) + sq(ydiff)); // + sq(zdiff));
+    float cartesian_mm = fast_sqrt(sq(xdiff) + sq(ydiff));
+    if (UNEAR_ZERO(cartesian_mm)) cartesian_mm = fabs(zdiff);
+    if (UNEAR_ZERO(cartesian_mm)) return true;
+
+    // Minimum number of seconds to move the given distance
+    const float seconds = cartesian_mm / _feedrate_mm_s;
+
+    // The number of segments-per-second times the duration
+    // gives the number of segments
+    uint16_t segments = resin_segments_per_second * seconds;
+
+    // Minimum segment size is 0.25mm
+    NOMORE(segments, cartesian_mm * 4); //cartesian_mm * 4
+ 
+    // At least one segment is required
+    NOLESS(segments, 1);
+
+    //set segments to 1 for debug
+    //segments = 1;
+
+    // The approximate length of each segment
+    const float inv_segments = 1.0 / float(segments),
+                segment_distance[XYZE] = {
+                  xdiff * inv_segments,
+                  ydiff * inv_segments,
+                  zdiff * inv_segments//,
+                  //ediff * inv_segments
+                };
+
+    const float cartesian_segment_mm = cartesian_mm * inv_segments;
+    
+    //SERIAL_ECHOPAIR("mm=", cartesian_mm);
+    //SERIAL_ECHOPAIR(" seconds=", seconds);
+    //SERIAL_ECHOPAIR(" laser=", planner.laser_status);
+    //SERIAL_ECHOLNPAIR(" segments=", segments);
+
+    // Get the current position as starting point
+    float raw[XYZE];
+    COPY(raw, current_position);
+
+    // Calculate and execute the segments
+    
+    //WRITE(DEBUG5, HIGH);
+    //WRITE(DEBUG6, LOW);
+    //WRITE(DEBUG5, HIGH);
+
+    while (--segments) {
+      LOOP_XYZE(i) raw[i] += segment_distance[i];
+
+      calculate_resin(raw);
+      planner.buffer_segment(resin[X_AXIS], resin[Y_AXIS], resin[Z_AXIS], 0.0, _feedrate_mm_s, active_extruder, cartesian_segment_mm);
+    }
+
+    // Ensure last segment arrives at target location.
+    calculate_resin(rtarget);
+    //planner.dac_X = uint16_t(LROUND(resin[X_AXIS] * planner.axis_steps_per_mm[X_AXIS])) + 0x8000;
+    //planner.dac_Y = uint16_t(LROUND(resin[Y_AXIS] * planner.axis_steps_per_mm[Y_AXIS])) + 0x8000;
+    planner.buffer_segment(resin[X_AXIS], resin[Y_AXIS], resin[Z_AXIS], 0.0, _feedrate_mm_s, active_extruder, cartesian_segment_mm);
+
+    planner.laser_status = false;
+
+    //WRITE(DEBUG5, LOW);
+    return false; // caller will update current_position
 
   }
 
 #endif
+
+
 
 
 #if !UBL_SEGMENTED
@@ -13892,7 +13892,7 @@ void prepare_move_to_destination() {
   #if ENABLED(DUAL_X_CARRIAGE)
     if (dual_x_carriage_unpark()) return;
   #endif
-
+    
   if (
     #if UBL_SEGMENTED
       ubl.prepare_segmented_line_to(destination, MMS_SCALED(feedrate_mm_s))
@@ -13900,6 +13900,7 @@ void prepare_move_to_destination() {
       prepare_kinematic_move_to(destination)
     #elif ENABLED(RESIN)
       prepare_resin_move_to(destination)
+
     #else
       prepare_move_to_destination_cartesian()
     #endif
@@ -14907,16 +14908,16 @@ void setup() {
     digitalWrite(LASER_ENABLE_PIN, LOW);
 
     pinMode(DEBUG4, OUTPUT);
-    analogWrite(DEBUG4, 50);
+    //analogWrite(DEBUG4, 50);
 
     pinMode(DEBUG5, OUTPUT);
-    analogWrite(DEBUG5, 100);
+    //analogWrite(DEBUG5, 100);
 
     pinMode(DEBUG6, OUTPUT);
-    analogWrite(DEBUG6, 150);
+    //analogWrite(DEBUG6, 150);
 
     pinMode(DEBUG7, OUTPUT);
-    analogWrite(DEBUG7, 200);
+    //analogWrite(DEBUG7, 200);
 /*
     int myEraser = 7;             // this is 111 in binary and is used as an eraser
     TCCR3B &= ~myEraser;

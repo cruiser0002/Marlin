@@ -96,7 +96,7 @@ block_t Planner::block_buffer[BLOCK_BUFFER_SIZE];
 
 #if ENABLED(RESIN)
   bool Planner::laser_status = false;              //bypass the use of extrusion motor for turning on the laser
-  uint16_t Planner::dac_X = 0, Planner::dac_Y = 0, Planner::dac_step_X = 0, Planner::dac_step_Y = 0;
+  //uint16_t Planner::dac_X = 0, Planner::dac_Y = 0, Planner::dac_step_X = 0, Planner::dac_step_Y = 0;
 
 #endif
 
@@ -716,7 +716,7 @@ void Planner::calculate_trapezoid_for_block(block_t* const block, const float &e
   const int32_t accel = block->acceleration_steps_per_s2;
 
 
-  #if ENABLED(RESIN0)
+  #if ENABLED(RESIN)
     uint32_t accelerate_steps = 0;
     uint32_t decelerate_steps = 0;
   #else
@@ -1726,16 +1726,18 @@ bool Planner::_populate_block(block_t * const block, bool split_move,
 
   block->steps[E_AXIS] = esteps;
 
-  block->step_event_count = MAX4(block->steps[X_AXIS], block->steps[Y_AXIS], block->steps[Z_AXIS], esteps);
+  
   
   #if ENABLED(RESIN)
     block->steps[E_AXIS] = 0;
     block->step_event_count = MAX4(block->steps[X_AXIS], block->steps[Y_AXIS], block->steps[Z_AXIS], 0);
     block->laser_on = laser_status;
-    block->dac_X = dac_X;
-    block->dac_Y = dac_Y;
-    block->dac_step_X = dac_step_X;
-    block->dac_step_Y = dac_step_Y;
+    //block->dac_X = dac_X;
+    //block->dac_Y = dac_Y;
+    //block->dac_step_X = dac_step_X;
+    //block->dac_step_Y = dac_step_Y;
+  #else
+    block->step_event_count = MAX4(block->steps[X_AXIS], block->steps[Y_AXIS], block->steps[Z_AXIS], esteps);
   #endif
 
   // Bail if this is a zero-length block
@@ -2485,6 +2487,7 @@ bool Planner::buffer_segment(const float &a, const float &b, const float &c, con
 
   // The target position of the tool in absolute steps
   // Calculate target position in absolute steps
+
   const int32_t target[ABCE] = {
     LROUND(a * axis_steps_per_mm[A_AXIS]),
     LROUND(b * axis_steps_per_mm[B_AXIS]),
@@ -2492,12 +2495,13 @@ bool Planner::buffer_segment(const float &a, const float &b, const float &c, con
     LROUND(e * axis_steps_per_mm[E_AXIS_N])
   };
 
+
   #if HAS_POSITION_FLOAT
     const float target_float[XYZE] = { a, b, c, e };
   #endif
 
   // DRYRUN prevents E moves from taking place
-  if (DEBUGGING(DRYRUN)) {
+  if (DEBUGGING(DRYRUN) || ENABLED(RESIN)) {
     position[E_AXIS] = target[E_AXIS];
     #if HAS_POSITION_FLOAT
       position_float[E_AXIS] = e;

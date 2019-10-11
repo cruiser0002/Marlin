@@ -120,7 +120,7 @@ typedef struct {
 
 
   #if ENABLED(RESIN)
-    uint16_t dac_X, dac_Y, dac_step_X, dac_step_Y;          //absolute dac position, dac coordinate is all positive
+    //uint16_t dac_X, dac_Y, dac_step_X, dac_step_Y;          //absolute dac position, dac coordinate is all positive
     bool laser_on;              //bypass the use of extrusion motor for turning on the laser
   #endif
 
@@ -181,7 +181,7 @@ class Planner {
 
 
     #if ENABLED(RESIN)
-      static uint16_t dac_X, dac_Y, dac_step_X, dac_step_Y;
+      //static uint16_t dac_X, dac_Y, dac_step_X, dac_step_Y;
       static bool laser_status;              //bypass the use of extrusion motor for turning on the laser
     #endif
 
@@ -694,11 +694,7 @@ class Planner {
     SERIAL_ECHOPAIR(" decelerate_after", block->decelerate_after);
     SERIAL_ECHOPAIR(" nominal_rate", block->nominal_rate);
   //*/
-        analogWrite(DEBUG6, block->dac_X >> 8);
-        analogWrite(DEBUG7, block->dac_Y >> 8);
-
-
-
+//analogWrite(DEBUG6, block->nominal_rate);
         // Return the block
         return block;
       }

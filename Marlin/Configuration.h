@@ -128,7 +128,7 @@
 #endif
 
 #define BED_DIM                  120
-#define RESIN_SEGMENTS_PER_SECOND 100
+#define RESIN_SEGMENTS_PER_SECOND 200
 #define Z0_RESIN              168 
 #define R_RESIN               9    //New galvo = 7.76 
 
